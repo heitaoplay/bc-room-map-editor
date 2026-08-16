@@ -1,0 +1,2490 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>BC 地图编辑器 · Room Map Editor</title>
+<style>
+  :root {
+    --bg: #15181d; --panel: #1d222b; --panel2: #232a35; --line: #2e3744;
+    --txt: #d7dde6; --muted: #8b97a7; --accent: #e0a93b; --ok: #5fd06b; --err: #e0604f;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--txt);
+    font: 13px/1.5 -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    height: 100vh; display: flex; flex-direction: column;
+  }
+  header {
+    display: flex; align-items: center; gap: 12px; padding: 8px 14px;
+    background: var(--panel); border-bottom: 1px solid var(--line);
+  }
+  header h1 { font-size: 15px; margin: 0; font-weight: 600; }
+  header .sub { color: var(--muted); font-size: 12px; }
+  .toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-left: auto; }
+  button, select {
+    background: var(--panel2); color: var(--txt); border: 1px solid var(--line);
+    border-radius: 6px; padding: 5px 10px; cursor: pointer; font-size: 12px;
+  }
+  button:hover { border-color: var(--accent); }
+  select { cursor: default; }
+  main { flex: 1; display: flex; min-height: 0; }
+  /* left palette */
+  #paletteWrap { width: 260px; background: var(--panel); border-right: 1px solid var(--line); display: flex; flex-direction: column; }
+  .layer-toggle { display: flex; padding: 8px; gap: 6px; border-bottom: 1px solid var(--line); }
+  .layer-toggle button { flex: 1; }
+  .layer-toggle button.active { background: var(--accent); color: #1a1a1a; border-color: var(--accent); font-weight: 600; }
+  #palette { overflow-y: auto; padding: 8px; flex: 1; }
+  .pal-section { margin-bottom: 12px; }
+  .pal-title { font-weight: 600; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px; }
+  .pal-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; }
+  .pal-item {
+    position: relative; display: flex; align-items: flex-end; padding: 3px 5px; border-radius: 5px;
+    border: 1px solid transparent; cursor: pointer; font-size: 11px; color: #fff;
+    height: 42px; overflow: hidden; background-size: cover; background-position: center;
+    text-shadow: 0 1px 2px #000, 0 0 3px #000;
+  }
+  .pal-item span {
+    position: relative; z-index: 1; white-space: nowrap; overflow: hidden;
+    text-overflow: ellipsis; font-weight: 600; width: 100%;
+    background: linear-gradient(transparent, rgba(0,0,0,.55));
+    padding: 1px 3px; margin: -3px -5px; border-radius: 0 0 4px 4px;
+  }
+  .pal-item:hover { border-color: #fff; }
+  .pal-item.sel { border-color: #fff; box-shadow: 0 0 0 2px var(--accent); }
+  .pal-badge {
+    position: absolute; top: 1px; right: 1px;
+    font-size: 9px; font-weight: 700; line-height: 14px;
+    width: 15px; text-align: center; border-radius: 3px;
+    color: #111; z-index: 2; pointer-events: none;
+    box-shadow: 0 0 3px rgba(0,0,0,.7);
+  }
+  /* center grid */
+  #stage { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px; overflow: hidden; min-width: 0; min-height: 0; }
+  .zoom-bar { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+  .zoom-bar button { min-width: 30px; height: 26px; font-size: 13px; font-weight: 600; line-height: 1; padding: 0 6px; text-align: center; white-space: nowrap; }
+  #zoomLevel { color: var(--muted); font-size: 12px; min-width: 42px; text-align: center; }
+  #gridWrap { overflow: auto; max-width: 100%; max-height: 100%; margin: auto; border: 1px solid var(--line); background: #0c0e12; }
+  #grid {
+    display: grid; grid-template-columns: repeat(var(--n), var(--cell, 13px)); grid-auto-rows: var(--cell, 13px);
+    gap: 0; user-select: none;
+  }
+  .cell { position: relative; width: 100%; height: 100%; background-size: cover; background-position: center; overflow: hidden; }
+  .cell .obj { position: absolute; inset: 0; background-size: contain; background-position: center; background-repeat: no-repeat; pointer-events: none; }
+  .cell:hover { outline: 1.5px solid #fff; outline-offset: -1.5px; z-index: 1; }
+  #brushInfo { margin-top: 10px; color: var(--muted); font-size: 12px; }
+  /* right panel */
+  #right { width: 320px; background: var(--panel); border-left: 1px solid var(--line); display: flex; flex-direction: column; padding: 10px; gap: 8px; }
+  #right h2 { font-size: 12px; margin: 0; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  #output {
+    width: 100%; height: 120px; resize: vertical; background: #0c0e12; color: var(--txt);
+    border: 1px solid var(--line); border-radius: 6px; padding: 6px; font-family: ui-monospace, monospace; font-size: 11px;
+  }
+  #stats { font-size: 11px; color: var(--muted); }
+  .ok { color: var(--ok); } .err { color: var(--err); }
+  .row { display: flex; gap: 6px; align-items: center; }
+  #flash { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: var(--accent); color: #1a1a1a; padding: 6px 14px; border-radius: 16px; opacity: 0; transition: opacity .3s; font-weight: 600; }
+  .hint { font-size: 11px; color: var(--muted); }
+  label.chk { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; }
+  /* tool groups in header */
+  .tb-group { display: flex; gap: 6px; align-items: center; padding-left: 10px; margin-left: 4px; border-left: 1px solid var(--line); }
+  .tb-group button.active { background: var(--accent); color: #1a1a1a; border-color: var(--accent); font-weight: 600; }
+  .tb-group button:disabled { opacity: .4; cursor: not-allowed; }
+  /* palette search */
+  #palSearch { margin: 8px 8px 0; padding: 6px 9px; width: calc(100% - 16px); border-radius: 6px;
+    background: var(--panel2); color: var(--txt); border: 1px solid var(--line); font-size: 12px; }
+  #palSearch:focus { outline: none; border-color: var(--accent); }
+  /* coordinate readout */
+  #coords { margin-top: 8px; color: var(--muted); font-size: 12px; font-family: ui-monospace, monospace; }
+  /* drawing tool bar — sits between zoom bar and grid */
+  .tool-bar {
+    display: flex; gap: 3px; margin-bottom: 8px;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 7px;
+    padding: 4px;
+  }
+  .tool-btn {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: transparent; color: var(--muted); border: 1px solid transparent;
+    border-radius: 5px; padding: 5px 10px; cursor: pointer; font-size: 12px;
+    transition: all .15s;
+  }
+  .tool-btn:hover { color: var(--txt); background: var(--panel2); border-color: var(--line); }
+  .tool-btn.active { background: var(--accent); color: #1a1a1a; border-color: var(--accent); font-weight: 600; }
+  .tool-btn svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+  /* ===== Custom dark scrollbars ===== */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: var(--line); border-radius: 3px;
+    transition: background .2s;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: #4a5568; }
+  ::-webkit-scrollbar-corner { background: transparent; }
+
+  /* Firefox */
+  * { scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+
+  /* ===== Animations & polish ===== */
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes flashSlide {
+    from { opacity: 0; transform: translateX(-50%) translateY(12px); }
+    to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+  }
+  @keyframes selPulse {
+    0%   { box-shadow: 0 0 0 2px var(--accent); }
+    50%  { box-shadow: 0 0 0 3px rgba(224,169,59,.5), 0 0 12px rgba(224,169,59,.25); }
+    100% { box-shadow: 0 0 0 2px var(--accent); }
+  }
+
+  body { animation: fadeInUp .35s ease-out both; }
+  header { animation: fadeInUp .35s ease-out .05s both; }
+  main   { animation: fadeInUp .35s ease-out .1s both; }
+
+  button, select {
+    transition: border-color .18s, background .18s, color .18s, transform .12s;
+  }
+  button:active:not(:disabled) { transform: scale(.96); }
+
+  #flash {
+    transition: opacity .3s, transform .3s;
+    backdrop-filter: blur(6px);
+  }
+  #flash.showing {
+    animation: flashSlide .28s ease-out both;
+  }
+
+  .pal-item {
+    transition: border-color .15s, box-shadow .2s, transform .12s;
+  }
+  .pal-item:hover { transform: translateY(-1px); }
+  .pal-item.sel { animation: selPulse 1.6s ease-in-out infinite; }
+
+  .cell:hover::after {
+    content: ""; position: absolute; inset: 0;
+    background: radial-gradient(circle at center, rgba(255,255,255,.08) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  #gridWrap {
+    cursor: grab;
+    transition: border-color .2s;
+  }
+  #gridWrap.panning { cursor: grabbing; }
+  #gridWrap:active { cursor: grabbing; }
+
+  .zoom-bar button { transition: background .15s, border-color .15s; }
+  .layer-toggle button { transition: background .2s, color .2s, border-color .2s; }
+
+  /* subtle header depth */
+  header {
+    background: linear-gradient(180deg, var(--panel) 0%, rgba(29,34,43,.98) 100%);
+    box-shadow: 0 1px 0 rgba(255,255,255,.03) inset;
+  }
+
+  /* right panel textarea focus glow */
+  #output:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(224,169,59,.15);
+  }
+
+  /* stats row micro-animation */
+  #stats { transition: opacity .2s; }
+</style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1 id="appTitle">BC 地图编辑器</h1>
+      <div class="sub" id="appSub">生成可直接 <code>/mappaste</code> 的数据串 · 40×40 网格</div>
+    </div>
+    <div class="toolbar">
+      <label class="chk"><span id="modeLabel">模式</span>
+        <select id="typeSel">
+          <option value="Always">始终可见</option>
+          <option value="Online">仅在线可见</option>
+          <option value="Offline">仅离线可见</option>
+        </select>
+      </label>
+      <label class="chk"><input type="checkbox" id="fog" /> <span id="fogLabel">迷雾</span></label>
+      <div class="tb-group">
+        <button id="btnUndo" title="撤销 (Ctrl+Z)">↶ 撤销</button>
+        <button id="btnRedo" title="重做 (Ctrl+Y)">↷ 重做</button>
+      </div>
+      <button id="btnFill" title="铺满当前选中的地板/部件（未选中则橡木地板）">铺地板</button>
+      <button id="btnClear">清空</button>
+      <button id="btnExample">示例</button>
+      <button id="btnExport" title="生成 mappaste 数据串到下方文本框">生成代码</button>
+      <label class="tb-group" style="border-left:1px solid var(--line);padding-left:10px;margin-left:4px">
+        <input type="file" id="fileImport" accept=".txt,.json,.map" style="display:none" />
+        <button id="btnFileImport" title="从本地文件导入地图数据">导入文件</button>
+        <button id="btnFileExport" title="导出为 .txt 文件下载到本地">导出文件</button>
+      </label>
+      <label class="chk" style="border-left:1px solid var(--line);padding-left:10px;margin-left:4px">
+        <span id="langLabel">语言</span>
+        <select id="langSel"></select>
+      </label>
+    </div>
+  </header>
+
+  <main>
+    <div id="paletteWrap">
+      <div class="layer-toggle">
+        <button id="layerTiles" class="active">地板/墙体层</button>
+        <button id="layerObjects">物件层</button>
+      </div>
+      <input id="palSearch" placeholder="搜索部件（名称/类型/编号）…" />
+      <div id="palette"></div>
+    </div>
+
+    <div id="stage">
+      <div class="zoom-bar">
+        <button id="zoomOut" title="缩小">−</button>
+        <span id="zoomLevel">100%</span>
+        <button id="zoomIn" title="放大">+</button>
+        <button id="zoomFit" title="适应窗口">适应</button>
+      </div>
+      <div class="tool-bar" id="toolBar">
+        <button class="tool-btn active" id="toolBrush" title="笔刷 (B)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.37 2.63 14 7l-1.59-1.59a2 2 0 0 0-2.82 0L8 7l9 9 1.59-1.59a2 2 0 0 0 0-2.82L17 10l4.37-4.37a2.12 2.12 0 1 0-3-3Z"/><path d="M9 8c-2 3-4 3.5-7 4l8 10c2-1 6-5 6-7"/><path d="m14.5 17.5 4.5 4.5"/></svg><span class="t" id="toolBrush_t">笔刷</span>
+        </button>
+        <button class="tool-btn" id="toolRect" title="矩形 (R)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/></svg><span class="t" id="toolRect_t">矩形</span>
+        </button>
+        <button class="tool-btn" id="toolLine" title="直线 (L)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="19" x2="19" y2="5"/></svg><span class="t" id="toolLine_t">直线</span>
+        </button>
+        <button class="tool-btn" id="toolFill" title="填充 (F)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m19 11-8-8-8.6 8.6a2 2 0 0 0 0 2.8l5.2 5.2c.8.8 2 .8 2.8 0L19 11Z"/><path d="m5 2 5 5"/><path d="M2 13h15"/><path d="M22 20a2 2 0 1 1-4 0c0-1.6 1.7-2.4 2-4 .3 1.6 2 2.4 2 4Z"/></svg><span class="t" id="toolFill_t">填充</span>
+        </button>
+        <button class="tool-btn" id="toolEraser" title="橡皮擦 (E)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 21 5-5"/><path d="M12.5 4.5a2.12 2.12 0 0 1 3 3L8 15l-5 5h6l9-9a2.12 2.12 0 0 0-3-3Z"/></svg><span class="t" id="toolEraser_t">橡皮擦</span>
+        </button>
+      </div>
+      <div id="gridWrap"><div id="grid"></div></div>
+      <div id="brushInfo">未选择部件</div>
+      <div id="coords">—</div>
+      <div class="hint" id="stageHint">左键绘制 · 右键擦除（当前层）· 拖动连续刷 · 快捷键 B笔刷/R矩形/L直线/F填充/E橡皮擦 · Ctrl+Z撤销 Ctrl+Y重做</div>
+    </div>
+
+    <div id="right">
+      <h2 id="panelTitle">mappaste 数据串</h2>
+      <textarea id="output" placeholder="点「生成代码」自动填入，或直接粘贴已有的 mappaste 串"></textarea>
+      <div class="row">
+        <button id="btnCopy">复制</button>
+        <span id="stats"></span>
+      </div>
+      <div class="hint" id="hintImport">粘贴串到文本框后按 <b>Ctrl+V</b> 即可自动识别并加载地图。<br>把最终串贴进游戏聊天框输入 <code>/mappaste &lt;串&gt;</code> 即可铺设。<br>注意：灯光/染色特效（Effects）不在 mappaste 串内，需游戏内另设。</div>
+    </div>
+  </main>
+
+  <div id="flash"></div>
+
+  <!-- Injected by build-editor.js -->
+  <script>// Copyright (c) 2013 Pieroxy <pieroxy@pieroxy.net>
+// This work is free. You can redistribute it and/or modify it
+// under the terms of the WTFPL, Version 2
+// For more information see LICENSE.txt or http://www.wtfpl.net/
+//
+// For more information, the home page:
+// http://pieroxy.net/blog/pages/lz-string/testing.html
+//
+// LZ-based compression algorithm, version 1.4.4
+var LZString = (function() {
+
+// private property
+var f = String.fromCharCode;
+var keyStrBase64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
+var keyStrUriSafe = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-$";
+var baseReverseDic = {};
+
+function getBaseValue(alphabet, character) {
+  if (!baseReverseDic[alphabet]) {
+    baseReverseDic[alphabet] = {};
+    for (let i=0 ; i<alphabet.length ; i++) {
+      baseReverseDic[alphabet][alphabet.charAt(i)] = i;
+    }
+  }
+  return baseReverseDic[alphabet][character];
+}
+
+var LZString = {
+  compressToBase64 : function (input) {
+    if (input == null) return "";
+    var res = LZString._compress(input, 6, function(a){return keyStrBase64.charAt(a);});
+    switch (res.length % 4) { // To produce valid Base64
+    default: // When could this happen ?
+    case 0 : return res;
+    case 1 : return res+"===";
+    case 2 : return res+"==";
+    case 3 : return res+"=";
+    }
+  },
+
+  decompressFromBase64 : function (input) {
+    if (input == null) return "";
+    if (input == "") return null;
+    return LZString._decompress(input.length, 32, function(index) { return getBaseValue(keyStrBase64, input.charAt(index)); });
+  },
+
+  compressToUTF16 : function (input) {
+    if (input == null) return "";
+    return LZString._compress(input, 15, function(a){return f(a+32);}) + " ";
+  },
+
+  decompressFromUTF16: function (compressed) {
+    if (compressed == null) return "";
+    if (compressed == "") return null;
+    return LZString._decompress(compressed.length, 16384, function(index) { return compressed.charCodeAt(index) - 32; });
+  },
+
+  //compress into uint8array (UCS-2 big endian format)
+  compressToUint8Array: function (uncompressed) {
+    var compressed = LZString.compress(uncompressed);
+    var buf=new Uint8Array(compressed.length*2); // 2 bytes per character
+
+    for (let i=0, TotalLen=compressed.length; i<TotalLen; i++) {
+      var current_value = compressed.charCodeAt(i);
+      buf[i*2] = current_value >>> 8;
+      buf[i*2+1] = current_value % 256;
+    }
+    return buf;
+  },
+
+  //decompress from uint8array (UCS-2 big endian format)
+  decompressFromUint8Array:function (compressed) {
+    if (compressed===null || compressed===undefined){
+        return LZString.decompress(compressed);
+    } else {
+        var buf=new Array(compressed.length/2); // 2 bytes per character
+        for (let i=0, TotalLen=buf.length; i<TotalLen; i++) {
+          buf[i]=compressed[i*2]*256+compressed[i*2+1];
+        }
+
+        var result = [];
+        buf.forEach(function (c) {
+          result.push(f(c));
+        });
+        return LZString.decompress(result.join(''));
+
+    }
+
+  },
+
+
+  //compress into a string that is already URI encoded
+  compressToEncodedURIComponent: function (input) {
+    if (input == null) return "";
+    return LZString._compress(input, 6, function(a){return keyStrUriSafe.charAt(a);});
+  },
+
+  //decompress from an output of compressToEncodedURIComponent
+  decompressFromEncodedURIComponent:function (input) {
+    if (input == null) return "";
+    if (input == "") return null;
+    input = input.replace(/ /g, "+");
+    return LZString._decompress(input.length, 32, function(index) { return getBaseValue(keyStrUriSafe, input.charAt(index)); });
+  },
+
+  compress: function (uncompressed) {
+    return LZString._compress(uncompressed, 16, function(a){return f(a);});
+  },
+  _compress: function (uncompressed, bitsPerChar, getCharFromInt) {
+    if (uncompressed == null) return "";
+    var i, value,
+        context_dictionary= {},
+        context_dictionaryToCreate= {},
+        context_c="",
+        context_wc="",
+        context_w="",
+        context_enlargeIn= 2, // Compensate for the first entry which should not count
+        context_dictSize= 3,
+        context_numBits= 2,
+        context_data=[],
+        context_data_val=0,
+        context_data_position=0,
+        ii;
+
+    for (ii = 0; ii < uncompressed.length; ii += 1) {
+      context_c = uncompressed.charAt(ii);
+      if (!Object.prototype.hasOwnProperty.call(context_dictionary,context_c)) {
+        context_dictionary[context_c] = context_dictSize++;
+        context_dictionaryToCreate[context_c] = true;
+      }
+
+      context_wc = context_w + context_c;
+      if (Object.prototype.hasOwnProperty.call(context_dictionary,context_wc)) {
+        context_w = context_wc;
+      } else {
+        if (Object.prototype.hasOwnProperty.call(context_dictionaryToCreate,context_w)) {
+          if (context_w.charCodeAt(0)<256) {
+            for (i=0 ; i<context_numBits ; i++) {
+              context_data_val = (context_data_val << 1);
+              if (context_data_position == bitsPerChar-1) {
+                context_data_position = 0;
+                context_data.push(getCharFromInt(context_data_val));
+                context_data_val = 0;
+              } else {
+                context_data_position++;
+              }
+            }
+            value = context_w.charCodeAt(0);
+            for (i=0 ; i<8 ; i++) {
+              context_data_val = (context_data_val << 1) | (value&1);
+              if (context_data_position == bitsPerChar-1) {
+                context_data_position = 0;
+                context_data.push(getCharFromInt(context_data_val));
+                context_data_val = 0;
+              } else {
+                context_data_position++;
+              }
+              value = value >> 1;
+            }
+          } else {
+            value = 1;
+            for (i=0 ; i<context_numBits ; i++) {
+              context_data_val = (context_data_val << 1) | value;
+              if (context_data_position ==bitsPerChar-1) {
+                context_data_position = 0;
+                context_data.push(getCharFromInt(context_data_val));
+                context_data_val = 0;
+              } else {
+                context_data_position++;
+              }
+              value = 0;
+            }
+            value = context_w.charCodeAt(0);
+            for (i=0 ; i<16 ; i++) {
+              context_data_val = (context_data_val << 1) | (value&1);
+              if (context_data_position == bitsPerChar-1) {
+                context_data_position = 0;
+                context_data.push(getCharFromInt(context_data_val));
+                context_data_val = 0;
+              } else {
+                context_data_position++;
+              }
+              value = value >> 1;
+            }
+          }
+          context_enlargeIn--;
+          if (context_enlargeIn == 0) {
+            context_enlargeIn = Math.pow(2, context_numBits);
+            context_numBits++;
+          }
+          delete context_dictionaryToCreate[context_w];
+        } else {
+          value = context_dictionary[context_w];
+          for (i=0 ; i<context_numBits ; i++) {
+            context_data_val = (context_data_val << 1) | (value&1);
+            if (context_data_position == bitsPerChar-1) {
+              context_data_position = 0;
+              context_data.push(getCharFromInt(context_data_val));
+              context_data_val = 0;
+            } else {
+              context_data_position++;
+            }
+            value = value >> 1;
+          }
+
+
+        }
+        context_enlargeIn--;
+        if (context_enlargeIn == 0) {
+          context_enlargeIn = Math.pow(2, context_numBits);
+          context_numBits++;
+        }
+        // Add wc to the dictionary.
+        context_dictionary[context_wc] = context_dictSize++;
+        context_w = String(context_c);
+      }
+    }
+
+    // Output the code for w.
+    if (context_w !== "") {
+      if (Object.prototype.hasOwnProperty.call(context_dictionaryToCreate,context_w)) {
+        if (context_w.charCodeAt(0)<256) {
+          for (i=0 ; i<context_numBits ; i++) {
+            context_data_val = (context_data_val << 1);
+            if (context_data_position == bitsPerChar-1) {
+              context_data_position = 0;
+              context_data.push(getCharFromInt(context_data_val));
+              context_data_val = 0;
+            } else {
+              context_data_position++;
+            }
+          }
+          value = context_w.charCodeAt(0);
+          for (i=0 ; i<8 ; i++) {
+            context_data_val = (context_data_val << 1) | (value&1);
+            if (context_data_position == bitsPerChar-1) {
+              context_data_position = 0;
+              context_data.push(getCharFromInt(context_data_val));
+              context_data_val = 0;
+            } else {
+              context_data_position++;
+            }
+            value = value >> 1;
+          }
+        } else {
+          value = 1;
+          for (i=0 ; i<context_numBits ; i++) {
+            context_data_val = (context_data_val << 1) | value;
+            if (context_data_position == bitsPerChar-1) {
+              context_data_position = 0;
+              context_data.push(getCharFromInt(context_data_val));
+              context_data_val = 0;
+            } else {
+              context_data_position++;
+            }
+            value = 0;
+          }
+          value = context_w.charCodeAt(0);
+          for (i=0 ; i<16 ; i++) {
+            context_data_val = (context_data_val << 1) | (value&1);
+            if (context_data_position == bitsPerChar-1) {
+              context_data_position = 0;
+              context_data.push(getCharFromInt(context_data_val));
+              context_data_val = 0;
+            } else {
+              context_data_position++;
+            }
+            value = value >> 1;
+          }
+        }
+        context_enlargeIn--;
+        if (context_enlargeIn == 0) {
+          context_enlargeIn = Math.pow(2, context_numBits);
+          context_numBits++;
+        }
+        delete context_dictionaryToCreate[context_w];
+      } else {
+        value = context_dictionary[context_w];
+        for (i=0 ; i<context_numBits ; i++) {
+          context_data_val = (context_data_val << 1) | (value&1);
+          if (context_data_position == bitsPerChar-1) {
+            context_data_position = 0;
+            context_data.push(getCharFromInt(context_data_val));
+            context_data_val = 0;
+          } else {
+            context_data_position++;
+          }
+          value = value >> 1;
+        }
+
+
+      }
+      context_enlargeIn--;
+      if (context_enlargeIn == 0) {
+        context_enlargeIn = Math.pow(2, context_numBits);
+        context_numBits++;
+      }
+    }
+
+    // Mark the end of the stream
+    value = 2;
+    for (i=0 ; i<context_numBits ; i++) {
+      context_data_val = (context_data_val << 1) | (value&1);
+      if (context_data_position == bitsPerChar-1) {
+        context_data_position = 0;
+        context_data.push(getCharFromInt(context_data_val));
+        context_data_val = 0;
+      } else {
+        context_data_position++;
+      }
+      value = value >> 1;
+    }
+
+    // Flush the last char
+    while (true) {
+      context_data_val = (context_data_val << 1);
+      if (context_data_position == bitsPerChar-1) {
+        context_data.push(getCharFromInt(context_data_val));
+        break;
+      }
+      else context_data_position++;
+    }
+    return context_data.join('');
+  },
+
+  decompress: function (compressed) {
+    if (compressed == null) return "";
+    if (compressed == "") return null;
+    return LZString._decompress(compressed.length, 32768, function(index) { return compressed.charCodeAt(index); });
+  },
+
+  _decompress: function (length, resetValue, getNextValue) {
+    var dictionary = [],
+        next,
+        enlargeIn = 4,
+        dictSize = 4,
+        numBits = 3,
+        entry = "",
+        result = [],
+        i,
+        w,
+        bits, resb, maxpower, power,
+        c,
+        data = {val:getNextValue(0), position:resetValue, index:1};
+
+    for (i = 0; i < 3; i += 1) {
+      dictionary[i] = i;
+    }
+
+    bits = 0;
+    maxpower = Math.pow(2,2);
+    power=1;
+    while (power!=maxpower) {
+      resb = data.val & data.position;
+      data.position >>= 1;
+      if (data.position == 0) {
+        data.position = resetValue;
+        data.val = getNextValue(data.index++);
+      }
+      bits |= (resb>0 ? 1 : 0) * power;
+      power <<= 1;
+    }
+
+    switch (next = bits) {
+      case 0:
+          bits = 0;
+          maxpower = Math.pow(2,8);
+          power=1;
+          while (power!=maxpower) {
+            resb = data.val & data.position;
+            data.position >>= 1;
+            if (data.position == 0) {
+              data.position = resetValue;
+              data.val = getNextValue(data.index++);
+            }
+            bits |= (resb>0 ? 1 : 0) * power;
+            power <<= 1;
+          }
+        c = f(bits);
+        break;
+      case 1:
+          bits = 0;
+          maxpower = Math.pow(2,16);
+          power=1;
+          while (power!=maxpower) {
+            resb = data.val & data.position;
+            data.position >>= 1;
+            if (data.position == 0) {
+              data.position = resetValue;
+              data.val = getNextValue(data.index++);
+            }
+            bits |= (resb>0 ? 1 : 0) * power;
+            power <<= 1;
+          }
+        c = f(bits);
+        break;
+      case 2:
+        return "";
+    }
+    dictionary[3] = c;
+    w = c;
+    result.push(c);
+    while (true) {
+      if (data.index > length) {
+        return "";
+      }
+
+      bits = 0;
+      maxpower = Math.pow(2,numBits);
+      power=1;
+      while (power!=maxpower) {
+        resb = data.val & data.position;
+        data.position >>= 1;
+        if (data.position == 0) {
+          data.position = resetValue;
+          data.val = getNextValue(data.index++);
+        }
+        bits |= (resb>0 ? 1 : 0) * power;
+        power <<= 1;
+      }
+
+      switch (c = bits) {
+        case 0:
+          bits = 0;
+          maxpower = Math.pow(2,8);
+          power=1;
+          while (power!=maxpower) {
+            resb = data.val & data.position;
+            data.position >>= 1;
+            if (data.position == 0) {
+              data.position = resetValue;
+              data.val = getNextValue(data.index++);
+            }
+            bits |= (resb>0 ? 1 : 0) * power;
+            power <<= 1;
+          }
+
+          dictionary[dictSize++] = f(bits);
+          c = dictSize-1;
+          enlargeIn--;
+          break;
+        case 1:
+          bits = 0;
+          maxpower = Math.pow(2,16);
+          power=1;
+          while (power!=maxpower) {
+            resb = data.val & data.position;
+            data.position >>= 1;
+            if (data.position == 0) {
+              data.position = resetValue;
+              data.val = getNextValue(data.index++);
+            }
+            bits |= (resb>0 ? 1 : 0) * power;
+            power <<= 1;
+          }
+          dictionary[dictSize++] = f(bits);
+          c = dictSize-1;
+          enlargeIn--;
+          break;
+        case 2:
+          return result.join('');
+      }
+
+      if (enlargeIn == 0) {
+        enlargeIn = Math.pow(2, numBits);
+        numBits++;
+      }
+
+      if (dictionary[c]) {
+        entry = dictionary[c];
+      } else {
+        if (c === dictSize) {
+          entry = w + w.charAt(0);
+        } else {
+          return null;
+        }
+      }
+      result.push(entry);
+
+      // Add w+entry[0] to the dictionary.
+      dictionary[dictSize++] = w + entry.charAt(0);
+      enlargeIn--;
+
+      w = entry;
+
+      if (enlargeIn == 0) {
+        enlargeIn = Math.pow(2, numBits);
+        numBits++;
+      }
+
+    }
+  }
+};
+  return LZString;
+})();
+
+if (typeof define === 'function' && define.amd) {
+  define(function () { return LZString; });
+} else if (typeof module !== 'undefined' && module != null ) {
+  module.exports = LZString
+} else if (typeof angular !== 'undefined' && angular != null ) {
+  angular.module('LZString', [])
+  .factory('LZString', function () {
+    return LZString;
+  });
+}</script>
+  <script>window.MAP_CATALOG = {"width":40,"height":40,"blankId":100,"tiles":[{"id":100,"layer":"tile","type":"Floor","style":"OakWood"},{"id":110,"layer":"tile","type":"Floor","style":"Stone"},{"id":115,"layer":"tile","type":"Floor","style":"Pavement"},{"id":120,"layer":"tile","type":"Floor","style":"Ceramic"},{"id":121,"layer":"tile","type":"Floor","style":"CeramicDark"},{"id":130,"layer":"tile","type":"Floor","style":"CarpetPink"},{"id":131,"layer":"tile","type":"Floor","style":"CarpetBlue"},{"id":132,"layer":"tile","type":"Floor","style":"CarpetRed"},{"id":140,"layer":"tile","type":"Floor","style":"Padded"},{"id":150,"layer":"tile","type":"Floor","style":"LatexFloor"},{"id":160,"layer":"tile","type":"Floor","style":"Tile"},{"id":170,"layer":"tile","type":"Floor","style":"HexBlue"},{"id":171,"layer":"tile","type":"Floor","style":"HexPurple"},{"id":172,"layer":"tile","type":"Floor","style":"Machine"},{"id":199,"layer":"tile","type":"Floor","style":"HalfWall","blockVision":true,"canEnter":true},{"id":200,"layer":"tile","type":"FloorExterior","style":"Dirt"},{"id":210,"layer":"tile","type":"FloorExterior","style":"Grass"},{"id":215,"layer":"tile","type":"FloorExterior","style":"LongGrass"},{"id":220,"layer":"tile","type":"FloorExterior","style":"Sand"},{"id":230,"layer":"tile","type":"FloorExterior","style":"Gravel"},{"id":235,"layer":"tile","type":"FloorExterior","style":"Asphalt"},{"id":240,"layer":"tile","type":"FloorExterior","style":"Snow"},{"id":250,"layer":"tile","type":"FloorExterior","style":"StoneSquareGray"},{"id":260,"layer":"tile","type":"FloorExterior","style":"ScatteredLeaves"},{"id":270,"layer":"tile","type":"FloorExterior","style":"ScatteredLeavesDirt"},{"id":280,"layer":"tile","type":"FloorExterior","style":"ScatteredLeavesThick"},{"id":1000,"layer":"tile","type":"Wall","style":"MixedWood","blockVision":true,"canEnter":true},{"id":1001,"layer":"tile","type":"Wall","style":"CedarWood","blockVision":true,"canEnter":true},{"id":1010,"layer":"tile","type":"Wall","style":"Log","blockVision":true,"canEnter":true},{"id":1020,"layer":"tile","type":"Wall","style":"Japanese","blockVision":true,"canEnter":true},{"id":1030,"layer":"tile","type":"Wall","style":"Stone","blockVision":true,"canEnter":true},{"id":1040,"layer":"tile","type":"Wall","style":"Brick","blockVision":true,"canEnter":true},{"id":1050,"layer":"tile","type":"Wall","style":"Dungeon","blockVision":true,"canEnter":true},{"id":1060,"layer":"tile","type":"Wall","style":"Square","blockVision":true,"blockHearing":true,"canEnter":true},{"id":1070,"layer":"tile","type":"Wall","style":"Steel","blockVision":true,"blockHearing":true,"canEnter":true},{"id":1080,"layer":"tile","type":"Wall","style":"Padded","blockVision":true,"blockHearing":true,"canEnter":true},{"id":1090,"layer":"tile","type":"Wall","style":"Tile","blockVision":true,"canEnter":true},{"id":1100,"layer":"tile","type":"Wall","style":"Lattice","blockVision":true,"canEnter":true},{"id":1200,"layer":"tile","type":"Wall","style":"HexBlue","blockVision":true,"canEnter":true},{"id":1201,"layer":"tile","type":"Wall","style":"HexPurple","blockVision":true,"canEnter":true},{"id":1202,"layer":"tile","type":"Wall","style":"PipeBlue","blockVision":true,"canEnter":true},{"id":1203,"layer":"tile","type":"Wall","style":"PipePurple","blockVision":true,"canEnter":true},{"id":1204,"layer":"tile","type":"Wall","style":"SteelBlack","blockVision":true,"canEnter":true},{"id":1205,"layer":"tile","type":"Wall","style":"SteelGary","blockVision":true,"canEnter":true},{"id":2000,"layer":"tile","type":"Water","style":"Pool"},{"id":2010,"layer":"tile","type":"Water","style":"Sea"},{"id":2020,"layer":"tile","type":"Water","style":"Ocean"},{"id":2025,"layer":"tile","type":"Water","style":"OceanCyan"},{"id":2030,"layer":"tile","type":"Water","style":"OceanCalm"},{"id":2040,"layer":"tile","type":"Water","style":"Swamp"},{"id":2050,"layer":"tile","type":"Water","style":"Waves"},{"id":2060,"layer":"tile","type":"Water","style":"Shallow"},{"id":2090,"layer":"tile","type":"Water","style":"Lava","canEnter":true}],"objects":[{"id":100,"layer":"object","type":"FloorDecoration","style":"Blank"},{"id":110,"layer":"object","type":"FloorDecoration","style":"EntryFlag","exit":true,"unique":true,"top":-0.125},{"id":115,"layer":"object","type":"FloorDecoration","style":"ExitFlag","exit":true,"top":-0.125},{"id":120,"layer":"object","type":"FloorDecoration","style":"BedTeal","asset":"ItemDevices:Bed","top":-0.25},{"id":130,"layer":"object","type":"FloorDecoration","style":"PillowPink"},{"id":140,"layer":"object","type":"FloorDecoration","style":"TableBrown"},{"id":151,"layer":"object","type":"FloorDecoration","style":"ChairWood","top":-0.5,"height":1.5},{"id":150,"layer":"object","type":"FloorDecoration","style":"ThroneRed","top":-1,"height":2},{"id":160,"layer":"object","type":"FloorDecoration","style":"KeyBronze","onEnter":true,"isVisible":true},{"id":162,"layer":"object","type":"FloorDecoration","style":"KeySilver","onEnter":true,"isVisible":true},{"id":164,"layer":"object","type":"FloorDecoration","style":"KeyGold","onEnter":true,"isVisible":true},{"id":165,"layer":"object","type":"FloorDecoration","style":"VikingChair","top":-0.5,"height":2},{"id":166,"layer":"object","type":"FloorDecoration","style":"Bed","asset":"ItemDevices:Bed","top":-0.82,"height":1.8,"left":0.05,"width":0.9},{"id":170,"layer":"object","type":"FloorDecoration","style":"Stairs","top":0,"left":0},{"id":180,"layer":"object","type":"FloorDecoration","style":"AirConditioner","top":0,"left":0},{"id":200,"layer":"object","type":"FloorDecorationThemed","style":"Blank"},{"id":210,"layer":"object","type":"FloorDecorationThemed","style":"TeacherDesk","top":-0.25},{"id":220,"layer":"object","type":"FloorDecorationThemed","style":"StudentDesk","top":-0.1},{"id":250,"layer":"object","type":"FloorDecorationThemed","style":"SinkDishes","top":-0.35},{"id":260,"layer":"object","type":"FloorDecorationThemed","style":"LaundryMachine","top":-0.55,"height":1.25},{"id":270,"layer":"object","type":"FloorDecorationThemed","style":"IroningBoard","top":-0.35},{"id":300,"layer":"object","type":"FloorDecorationThemed","style":"ShibariFrame","top":-1,"height":2},{"id":310,"layer":"object","type":"FloorDecorationThemed","style":"JapaneseTable","top":-0.1},{"id":320,"layer":"object","type":"FloorDecorationThemed","style":"BanzaiTree","top":-0.1},{"id":350,"layer":"object","type":"FloorDecorationThemed","style":"MedicalDesk","top":-0.15},{"id":370,"layer":"object","type":"FloorDecorationThemed","style":"Toilet","top":-0.65,"height":1.5,"left":0.05,"width":0.9},{"id":380,"layer":"object","type":"FloorDecorationThemed","style":"DeskBlue"},{"id":381,"layer":"object","type":"FloorDecorationThemed","style":"DeskPurple"},{"id":382,"layer":"object","type":"FloorDecorationThemed","style":"ConsoleLeft","top":-0.3,"height":1.3,"left":0,"width":1},{"id":383,"layer":"object","type":"FloorDecorationThemed","style":"ConsoleRight","top":-0.3,"height":1.3,"left":0,"width":1},{"id":384,"layer":"object","type":"FloorDecorationThemed","style":"LongDeskLeft","top":-0.3,"height":1.3,"left":0,"width":1},{"id":385,"layer":"object","type":"FloorDecorationThemed","style":"LongDeskRight","top":-0.3,"height":1.3,"left":0,"width":1},{"id":386,"layer":"object","type":"FloorDecorationThemed","style":"Cabinet","top":-0.9,"height":2,"left":0,"width":1},{"id":387,"layer":"object","type":"FloorDecorationThemed","style":"Television","top":-0.3,"height":1.3,"left":0,"width":1},{"id":388,"layer":"object","type":"FloorDecorationThemed","style":"TelevisionBack","top":-0.3,"height":1.3,"left":0,"width":1},{"id":389,"layer":"object","type":"FloorDecorationThemed","style":"Wardrobe","top":-0.9,"height":2,"left":0,"width":1},{"id":390,"layer":"object","type":"FloorDecorationThemed","style":"StandingBellflowerBanner","top":-1.1,"height":1.7,"left":0.15,"width":0.7},{"id":391,"layer":"object","type":"FloorDecorationThemed","style":"BondageClubBanner","top":-1.1,"height":1.7,"left":0.15,"width":0.7},{"id":392,"layer":"object","type":"FloorDecorationThemed","style":"VoidOrderBanner","top":-0.9,"height":1.5,"left":0.13,"width":0.7},{"id":393,"layer":"object","type":"FloorDecorationThemed","style":"KatanaOnStand","top":-0.4,"height":1,"left":0.1,"width":0.8},{"id":394,"layer":"object","type":"FloorDecorationThemed","style":"MagicMark","top":0.03,"height":0.9,"left":0.05,"width":0.9},{"id":500,"layer":"object","type":"FloorDecorationParty","style":"Blank"},{"id":510,"layer":"object","type":"FloorDecorationParty","style":"BalloonFiveColor","top":-0.6,"height":1.5},{"id":511,"layer":"object","type":"FloorDecorationParty","style":"BalloonTwoHeart","top":-0.15},{"id":520,"layer":"object","type":"FloorDecorationParty","style":"WeddingCake","top":-1,"height":2},{"id":521,"layer":"object","type":"FloorDecorationParty","style":"WeddingArch","top":-1,"height":2},{"id":530,"layer":"object","type":"FloorDecorationParty","style":"FlowerVasePink","top":-0.33},{"id":560,"layer":"object","type":"FloorDecorationParty","style":"BeachUmbrellaStripe","top":-1.1,"height":2},{"id":570,"layer":"object","type":"FloorDecorationParty","style":"BeachTowelStripe"},{"id":580,"layer":"object","type":"FloorDecorationParty","style":"Speaker","top":-1.2,"height":1.85},{"id":590,"layer":"object","type":"FloorDecorationParty","style":"Presents","top":0.25,"height":0.5},{"id":600,"layer":"object","type":"FloorDecorationCamping","style":"Blank"},{"id":610,"layer":"object","type":"FloorDecorationCamping","style":"LogFire","top":-0.35},{"id":611,"layer":"object","type":"FloorDecorationCamping","style":"LogFireAnim0","top":-0.5,"height":1,"animated":true},{"id":620,"layer":"object","type":"FloorDecorationCamping","style":"LogSingle","top":-0.2},{"id":630,"layer":"object","type":"FloorDecorationCamping","style":"TentBlue","top":-0.3},{"id":640,"layer":"object","type":"FloorDecorationCamping","style":"SleepingBagBlue"},{"id":650,"layer":"object","type":"FloorDecorationCamping","style":"ChairRed","top":-0.35},{"id":660,"layer":"object","type":"FloorDecorationCamping","style":"Hurdle1","canEnter":true},{"id":670,"layer":"object","type":"FloorDecorationCamping","style":"Hurdle2","canEnter":true},{"id":680,"layer":"object","type":"FloorDecorationCamping","style":"Hurdle3"},{"id":700,"layer":"object","type":"FloorDecorationExpanding","style":"Blank"},{"id":710,"layer":"object","type":"FloorDecorationExpanding","style":"CouchPinkPreview","top":-0.35,"animated":true},{"id":720,"layer":"object","type":"FloorDecorationExpanding","style":"BedBluePreview","top":-1,"height":2,"animated":true},{"id":730,"layer":"object","type":"FloorDecorationExpanding","style":"BallPitPreview","top":-0.25,"height":1.25,"animated":true},{"id":740,"layer":"object","type":"FloorDecorationExpanding","style":"VikingTablePreview","top":-0.25,"height":1.25,"animated":true},{"id":750,"layer":"object","type":"FloorDecorationExpanding","style":"RailroadPreview","top":0,"animated":true},{"id":800,"layer":"object","type":"FloorDecorationAnimal","style":"Blank"},{"id":810,"layer":"object","type":"FloorDecorationAnimal","style":"CatCaramelHappy","top":-0.2,"animated":true},{"id":820,"layer":"object","type":"FloorDecorationAnimal","style":"DogBrownHappy","top":-0.4,"animated":true},{"id":830,"layer":"object","type":"FloorDecorationAnimal","style":"RabbitBrownStand","top":-0.3,"animated":true},{"id":840,"layer":"object","type":"FloorDecorationAnimal","style":"ChickenBrownIdleLeft","height":0.5,"left":0.25,"width":0.5,"animated":true},{"id":1000,"layer":"object","type":"FloorItem","style":"Blank"},{"id":1010,"layer":"object","type":"FloorItem","style":"Kennel","asset":"ItemDevices:Kennel","top":-1,"height":2},{"id":1020,"layer":"object","type":"FloorItem","style":"X-Cross","asset":"ItemDevices:X-Cross","top":-1,"height":2},{"id":1030,"layer":"object","type":"FloorItem","style":"BondageBench","asset":"ItemDevices:BondageBench","top":-1,"height":2},{"id":1040,"layer":"object","type":"FloorItem","style":"Trolley","asset":"ItemDevices:Trolley","top":-1,"height":2},{"id":1050,"layer":"object","type":"FloorItem","style":"Locker","asset":"ItemDevices:Locker","top":-1,"height":2},{"id":1060,"layer":"object","type":"FloorItem","style":"WoodenBox","asset":"ItemDevices:WoodenBox","top":-1,"height":2},{"id":1070,"layer":"object","type":"FloorItem","style":"Coffin","asset":"ItemDevices:Coffin","top":-1.2,"height":1.85},{"id":1080,"layer":"object","type":"FloorItem","style":"TheDisplayFrame","asset":"ItemDevices:TheDisplayFrame","top":-1,"height":2},{"id":1090,"layer":"object","type":"FloorItem","style":"Pole","asset":"ItemDevices:Pole","top":-0.85,"height":1.8},{"id":1095,"layer":"object","type":"FloorItem","style":"MedicalBed","asset":"ItemDevices:MedicalBed","top":-0.82,"height":1.8,"left":0.05,"width":0.9},{"id":1096,"layer":"object","type":"FloorItem","style":"FuturisticCrate","asset":"ItemDevices:FuturisticCrate","top":-0.95,"height":2},{"id":1100,"layer":"object","type":"FloorNumber","style":"Blank"},{"id":1110,"layer":"object","type":"FloorNumber","style":"Number0"},{"id":1111,"layer":"object","type":"FloorNumber","style":"Number1"},{"id":1112,"layer":"object","type":"FloorNumber","style":"Number2"},{"id":1113,"layer":"object","type":"FloorNumber","style":"Number3"},{"id":1114,"layer":"object","type":"FloorNumber","style":"Number4"},{"id":1115,"layer":"object","type":"FloorNumber","style":"Number5"},{"id":1116,"layer":"object","type":"FloorNumber","style":"Number6"},{"id":1117,"layer":"object","type":"FloorNumber","style":"Number7"},{"id":1118,"layer":"object","type":"FloorNumber","style":"Number8"},{"id":1119,"layer":"object","type":"FloorNumber","style":"Number9"},{"id":1200,"layer":"object","type":"FloorLetter","style":"Blank"},{"id":1201,"layer":"object","type":"FloorLetter","style":"LetterA"},{"id":1202,"layer":"object","type":"FloorLetter","style":"LetterB"},{"id":1203,"layer":"object","type":"FloorLetter","style":"LetterC"},{"id":1204,"layer":"object","type":"FloorLetter","style":"LetterD"},{"id":1205,"layer":"object","type":"FloorLetter","style":"LetterE"},{"id":1206,"layer":"object","type":"FloorLetter","style":"LetterF"},{"id":1207,"layer":"object","type":"FloorLetter","style":"LetterG"},{"id":1208,"layer":"object","type":"FloorLetter","style":"LetterH"},{"id":1209,"layer":"object","type":"FloorLetter","style":"LetterI"},{"id":1210,"layer":"object","type":"FloorLetter","style":"LetterJ"},{"id":1211,"layer":"object","type":"FloorLetter","style":"LetterK"},{"id":1212,"layer":"object","type":"FloorLetter","style":"LetterL"},{"id":1213,"layer":"object","type":"FloorLetter","style":"LetterM"},{"id":1214,"layer":"object","type":"FloorLetter","style":"LetterN"},{"id":1215,"layer":"object","type":"FloorLetter","style":"LetterO"},{"id":1216,"layer":"object","type":"FloorLetter","style":"LetterP"},{"id":1217,"layer":"object","type":"FloorLetter","style":"LetterQ"},{"id":1218,"layer":"object","type":"FloorLetter","style":"LetterR"},{"id":1219,"layer":"object","type":"FloorLetter","style":"LetterS"},{"id":1220,"layer":"object","type":"FloorLetter","style":"LetterT"},{"id":1221,"layer":"object","type":"FloorLetter","style":"LetterU"},{"id":1222,"layer":"object","type":"FloorLetter","style":"LetterV"},{"id":1223,"layer":"object","type":"FloorLetter","style":"LetterW"},{"id":1224,"layer":"object","type":"FloorLetter","style":"LetterX"},{"id":1225,"layer":"object","type":"FloorLetter","style":"LetterY"},{"id":1226,"layer":"object","type":"FloorLetter","style":"LetterZ"},{"id":1300,"layer":"object","type":"FloorIcon","style":"Blank"},{"id":1301,"layer":"object","type":"FloorIcon","style":"IconCircle"},{"id":1302,"layer":"object","type":"FloorIcon","style":"IconSquare"},{"id":1303,"layer":"object","type":"FloorIcon","style":"IconTriangle"},{"id":1304,"layer":"object","type":"FloorIcon","style":"IconCross"},{"id":1305,"layer":"object","type":"FloorIcon","style":"IconDiamond"},{"id":1306,"layer":"object","type":"FloorIcon","style":"IconArrowUp"},{"id":1307,"layer":"object","type":"FloorIcon","style":"IconArrowDown"},{"id":1308,"layer":"object","type":"FloorIcon","style":"IconArrowLeft"},{"id":1309,"layer":"object","type":"FloorIcon","style":"IconArrowRight"},{"id":2000,"layer":"object","type":"FloorObstacle","style":"Blank","canEnter":true},{"id":2004,"layer":"object","type":"FloorObstacle","style":"Stalagmite","top":-0.125,"height":1,"canEnter":true},{"id":2005,"layer":"object","type":"FloorObstacle","style":"Rocks","top":-0.125,"height":1.125,"canEnter":true},{"id":2006,"layer":"object","type":"FloorObstacle","style":"GoldStones","top":0.1,"height":0.5,"left":0.25,"width":0.5,"canEnter":true},{"id":2007,"layer":"object","type":"FloorObstacle","style":"StonePile","top":0.1,"height":0.5,"left":0.25,"width":0.5,"canEnter":true},{"id":2010,"layer":"object","type":"FloorObstacle","style":"Statue","top":-1,"height":2,"canEnter":true},{"id":2011,"layer":"object","type":"FloorObstacle","style":"Knight","top":-1.25,"height":1.65,"left":0.05,"width":0.75,"canEnter":true},{"id":2012,"layer":"object","type":"FloorObstacle","style":"Samurai","top":-1.25,"height":1.75,"left":0.05,"width":0.85,"canEnter":true},{"id":2013,"layer":"object","type":"FloorObstacle","style":"Totem","top":-1,"height":2,"canEnter":true},{"id":2014,"layer":"object","type":"FloorObstacle","style":"EasterIsland","top":-1,"height":2,"canEnter":true},{"id":2015,"layer":"object","type":"FloorObstacle","style":"OrderOfTheVoidTotem","top":-1,"height":2,"canEnter":true},{"id":2020,"layer":"object","type":"FloorObstacle","style":"Barrel","top":-0.5,"height":1.5,"canEnter":true},{"id":2025,"layer":"object","type":"FloorObstacle","style":"Chest","top":0,"height":1,"canEnter":true},{"id":2030,"layer":"object","type":"FloorObstacle","style":"IronBars","top":-1,"height":2,"canEnter":true},{"id":2031,"layer":"object","type":"FloorObstacle","style":"BarbFence","top":-1,"height":2,"canEnter":true},{"id":2032,"layer":"object","type":"FloorObstacle","style":"PicketFence","top":-0.8,"height":0.75,"width":1,"canEnter":true},{"id":2033,"layer":"object","type":"FloorObstacle","style":"VelourRopeBarrier","top":-0.35,"animated":true},{"id":2035,"layer":"object","type":"FloorObstacle","style":"Bush","top":-0.25,"height":1,"canEnter":true},{"id":2040,"layer":"object","type":"FloorObstacle","style":"OakTree","top":-1.5,"height":2.5,"left":-0.25,"width":1.5,"canEnter":true},{"id":2045,"layer":"object","type":"FloorObstacle","style":"OakTree_Fall","top":-1.5,"height":2.5,"left":-0.25,"width":1.5,"canEnter":true},{"id":2048,"layer":"object","type":"FloorObstacle","style":"LeaflessTree","top":-1.25,"height":2,"canEnter":true},{"id":2050,"layer":"object","type":"FloorObstacle","style":"PineTree","top":-1,"height":2,"canEnter":true},{"id":2055,"layer":"object","type":"FloorObstacle","style":"PalmTree","top":-1.5,"height":2.5,"left":-0.3,"width":1.65,"canEnter":true},{"id":2059,"layer":"object","type":"FloorObstacle","style":"Sakura","top":-1.5,"height":2,"left":-0.3,"width":1.3,"canEnter":true},{"id":2057,"layer":"object","type":"FloorObstacle","style":"Cactus","top":-1.2,"height":1.8,"left":-0.2,"width":1.3,"canEnter":true},{"id":2060,"layer":"object","type":"FloorObstacle","style":"ChristmasTree","top":-1,"height":2,"canEnter":true},{"id":2070,"layer":"object","type":"FloorObstacle","style":"Window","top":-0.5,"height":1.5,"canEnter":true},{"id":2080,"layer":"object","type":"FloorObstacle","style":"TrashCan","top":-0.25,"height":0.75,"width":0.75,"canEnter":true},{"id":2085,"layer":"object","type":"FloorObstacle","style":"RoadCone","top":0,"height":0.75,"left":0.13,"width":0.75,"canEnter":true},{"id":2090,"layer":"object","type":"FloorObstacle","style":"LampPost","top":-1.25,"height":2,"canEnter":true},{"id":2098,"layer":"object","type":"FloorObstacle","style":"Pillar","top":-1.25,"height":2,"left":0.16,"width":0.7,"canEnter":true},{"id":3000,"layer":"object","type":"WallDecoration","style":"Blank"},{"id":3010,"layer":"object","type":"WallDecoration","style":"Painting"},{"id":3020,"layer":"object","type":"WallDecoration","style":"Mirror"},{"id":3030,"layer":"object","type":"WallDecoration","style":"Candelabra0","animated":true},{"id":3040,"layer":"object","type":"WallDecoration","style":"Whip"},{"id":3050,"layer":"object","type":"WallDecoration","style":"Fireplace"},{"id":3060,"layer":"object","type":"WallDecoration","style":"Stocking","top":0.35,"height":0.5,"left":0.25,"width":0.5},{"id":3070,"layer":"object","type":"WallDecoration","style":"Moss","top":0.15,"height":0.8},{"id":3075,"layer":"object","type":"WallDecoration","style":"Vines","top":0.15,"height":0.8},{"id":3076,"layer":"object","type":"WallDecoration","style":"Vines2","top":0.15,"height":0.8},{"id":3100,"layer":"object","type":"WallDecoration","style":"SilverShield"},{"id":3110,"layer":"object","type":"WallDecoration","style":"CrossedSabers"},{"id":3120,"layer":"object","type":"WallDecoration","style":"Window","top":0.2,"height":0.8,"left":0.1,"width":0.8},{"id":3121,"layer":"object","type":"WallDecoration","style":"WindowNight","top":0.22,"height":0.8,"left":0.1,"width":0.8},{"id":3122,"layer":"object","type":"WallDecoration","style":"StainedGlass","top":0.25,"height":0.75,"left":0.13,"width":0.75},{"id":3200,"layer":"object","type":"WallDecoration","style":"SchoolBoard"},{"id":3250,"layer":"object","type":"WallDecoration","style":"FirstAidKit"},{"id":3260,"layer":"object","type":"WallDecoration","style":"EyeTest"},{"id":3261,"layer":"object","type":"WallDecoration","style":"Scroll","top":0.3,"height":0.6,"left":0.2,"width":0.6},{"id":3262,"layer":"object","type":"WallDecoration","style":"Wanted","top":0.25,"height":0.7,"left":0.2,"width":0.6},{"id":3270,"layer":"object","type":"WallDecoration","style":"Bookshelf"},{"id":3275,"layer":"object","type":"WallDecoration","style":"AirConditioner","top":0.27,"height":0.8},{"id":3280,"layer":"object","type":"WallDecoration","style":"ShowerHead"},{"id":3290,"layer":"object","type":"WallDecoration","style":"EnemaHead"},{"id":3301,"layer":"object","type":"WallDecoration","style":"MonitorSmall"},{"id":3302,"layer":"object","type":"WallDecoration","style":"MonitorBigLeft"},{"id":3303,"layer":"object","type":"WallDecoration","style":"MonitorBigRight"},{"id":4000,"layer":"object","type":"WallPath","style":"Blank","canEnter":true},{"id":4010,"layer":"object","type":"WallPath","style":"WoodOpen","top":-1,"height":2,"canEnter":true},{"id":4011,"layer":"object","type":"WallPath","style":"WoodClosed","occupiedStyle":"WoodOpen","top":-1,"height":2,"canEnter":true},{"id":4012,"layer":"object","type":"WallPath","style":"WoodLocked","occupiedStyle":"WoodOpen","top":-1,"height":2,"canEnter":true},{"id":4013,"layer":"object","type":"WallPath","style":"WoodLockedBronze","occupiedStyle":"WoodOpen","top":-1,"height":2,"canEnter":true},{"id":4014,"layer":"object","type":"WallPath","style":"WoodLockedSilver","occupiedStyle":"WoodOpen","top":-1,"height":2,"canEnter":true},{"id":4015,"layer":"object","type":"WallPath","style":"WoodLockedGold","occupiedStyle":"WoodOpen","top":-1,"height":2,"canEnter":true},{"id":4020,"layer":"object","type":"WallPath","style":"Metal","occupiedStyle":"MetalOpen","top":-1,"height":2,"canEnter":true},{"id":4021,"layer":"object","type":"WallPath","style":"MetalUp","occupiedStyle":"MetalOpen","top":-1,"height":2,"canEnter":true},{"id":4022,"layer":"object","type":"WallPath","style":"MetalDown","occupiedStyle":"MetalOpen","top":-1,"height":2,"canEnter":true},{"id":4023,"layer":"object","type":"WallPath","style":"MetalLockedBronze","occupiedStyle":"MetalOpen","top":-1,"height":2,"canEnter":true},{"id":4024,"layer":"object","type":"WallPath","style":"MetalLockedSilver","occupiedStyle":"MetalOpen","top":-1,"height":2,"canEnter":true},{"id":4025,"layer":"object","type":"WallPath","style":"MetalLockedGold","occupiedStyle":"MetalOpen","top":-1,"height":2,"canEnter":true},{"id":4030,"layer":"object","type":"WallPath","style":"BrownDoor","occupiedStyle":"BrownDoorOpen","top":-0.55,"height":1.55,"left":0.06,"width":0.85,"canEnter":true},{"id":4031,"layer":"object","type":"WallPath","style":"BrownDoorOpen","top":-0.55,"height":1.55,"left":0.06,"width":0.85,"canEnter":true},{"id":4032,"layer":"object","type":"WallPath","style":"RoyalDoor","occupiedStyle":"RoyalDoorOpen","top":-0.55,"height":1.55,"left":0.06,"width":0.85,"canEnter":true},{"id":4033,"layer":"object","type":"WallPath","style":"RoyalDoorOpen","top":-0.55,"height":1.55,"left":0.06,"width":0.85,"canEnter":true},{"id":4034,"layer":"object","type":"WallPath","style":"SteelDoor","occupiedStyle":"SteelDoorOpen","top":-0.55,"height":1.55,"left":0.06,"width":0.85,"canEnter":true},{"id":4035,"layer":"object","type":"WallPath","style":"SteelDoorOpen","top":-0.55,"height":1.55,"left":0.06,"width":0.85,"canEnter":true},{"id":4036,"layer":"object","type":"WallPath","style":"GrayDoor","occupiedStyle":"GrayDoorOpen","top":-0.55,"height":1.55,"left":0.06,"width":0.85,"canEnter":true},{"id":4037,"layer":"object","type":"WallPath","style":"GrayDoorOpen","top":-0.55,"height":1.55,"left":0.06,"width":0.85,"canEnter":true},{"id":5010,"layer":"object","type":"Banners","style":"Red","top":0.25,"height":0.6,"left":0.25,"width":0.5},{"id":5011,"layer":"object","type":"Banners","style":"Blue","top":0.25,"height":0.6,"left":0.25,"width":0.5},{"id":5012,"layer":"object","type":"Banners","style":"Green","top":0.25,"height":0.6,"left":0.25,"width":0.5},{"id":5013,"layer":"object","type":"Banners","style":"Yellow","top":0.25,"height":0.6,"left":0.25,"width":0.5},{"id":5014,"layer":"object","type":"Banners","style":"Black","top":0.25,"height":0.6,"left":0.25,"width":0.5},{"id":5015,"layer":"object","type":"Banners","style":"PaladinBanner","top":0.25,"height":0.6,"left":0.25,"width":0.5},{"id":5016,"layer":"object","type":"Banners","style":"ServiOrdinisBanner","top":0.25,"height":0.6,"left":0.25,"width":0.5},{"id":5017,"layer":"object","type":"Banners","style":"BellflowerBanner","top":0.25,"height":0.6,"left":0.25,"width":0.5},{"id":5018,"layer":"object","type":"Banners","style":"BondageClub","top":0.25,"height":0.6,"left":0.25,"width":0.5},{"id":5019,"layer":"object","type":"Banners","style":"Inquisition","top":0.25,"height":0.6,"left":0.25,"width":0.5},{"id":5020,"layer":"object","type":"Banners","style":"MagesSacrosanctorum","top":0.25,"height":0.6,"left":0.25,"width":0.5},{"id":5021,"layer":"object","type":"Banners","style":"MaidSorority","top":0.25,"height":0.6,"left":0.25,"width":0.5},{"id":5022,"layer":"object","type":"Banners","style":"Priesthood","top":0.25,"height":0.6,"left":0.25,"width":0.5},{"id":5023,"layer":"object","type":"Banners","style":"VoidOrder","top":0.25,"height":0.6,"left":0.25,"width":0.5}],"effects":[{"id":10,"layer":"effect","type":"StaticLighting","color":[0,0,0,0]},{"id":11,"layer":"effect","type":"StaticLighting","color":[0,0,0,0.2]},{"id":12,"layer":"effect","type":"StaticLighting","color":[0,0,0,0.5]},{"id":13,"layer":"effect","type":"StaticLighting","color":[0,0,0,0.8]},{"id":14,"layer":"effect","type":"StaticLighting","color":[255,0,0,0.3]},{"id":15,"layer":"effect","type":"StaticLighting","color":[0,0,255,0.3]},{"id":16,"layer":"effect","type":"StaticLighting","color":[0,255,0,0.3]},{"id":17,"layer":"effect","type":"StaticLighting","color":[255,255,0,0.3]}],"byId":{"10":{"id":10,"layer":"effect","type":"StaticLighting","color":[0,0,0,0]},"11":{"id":11,"layer":"effect","type":"StaticLighting","color":[0,0,0,0.2]},"12":{"id":12,"layer":"effect","type":"StaticLighting","color":[0,0,0,0.5]},"13":{"id":13,"layer":"effect","type":"StaticLighting","color":[0,0,0,0.8]},"14":{"id":14,"layer":"effect","type":"StaticLighting","color":[255,0,0,0.3]},"15":{"id":15,"layer":"effect","type":"StaticLighting","color":[0,0,255,0.3]},"16":{"id":16,"layer":"effect","type":"StaticLighting","color":[0,255,0,0.3]},"17":{"id":17,"layer":"effect","type":"StaticLighting","color":[255,255,0,0.3]},"100":{"id":100,"layer":"object","type":"FloorDecoration","style":"Blank"},"110":{"id":110,"layer":"object","type":"FloorDecoration","style":"EntryFlag","exit":true,"unique":true,"top":-0.125},"115":{"id":115,"layer":"object","type":"FloorDecoration","style":"ExitFlag","exit":true,"top":-0.125},"120":{"id":120,"layer":"object","type":"FloorDecoration","style":"BedTeal","asset":"ItemDevices:Bed","top":-0.25},"121":{"id":121,"layer":"tile","type":"Floor","style":"CeramicDark"},"130":{"id":130,"layer":"object","type":"FloorDecoration","style":"PillowPink"},"131":{"id":131,"layer":"tile","type":"Floor","style":"CarpetBlue"},"132":{"id":132,"layer":"tile","type":"Floor","style":"CarpetRed"},"140":{"id":140,"layer":"object","type":"FloorDecoration","style":"TableBrown"},"150":{"id":150,"layer":"object","type":"FloorDecoration","style":"ThroneRed","top":-1,"height":2},"151":{"id":151,"layer":"object","type":"FloorDecoration","style":"ChairWood","top":-0.5,"height":1.5},"160":{"id":160,"layer":"object","type":"FloorDecoration","style":"KeyBronze","onEnter":true,"isVisible":true},"162":{"id":162,"layer":"object","type":"FloorDecoration","style":"KeySilver","onEnter":true,"isVisible":true},"164":{"id":164,"layer":"object","type":"FloorDecoration","style":"KeyGold","onEnter":true,"isVisible":true},"165":{"id":165,"layer":"object","type":"FloorDecoration","style":"VikingChair","top":-0.5,"height":2},"166":{"id":166,"layer":"object","type":"FloorDecoration","style":"Bed","asset":"ItemDevices:Bed","top":-0.82,"height":1.8,"left":0.05,"width":0.9},"170":{"id":170,"layer":"object","type":"FloorDecoration","style":"Stairs","top":0,"left":0},"171":{"id":171,"layer":"tile","type":"Floor","style":"HexPurple"},"172":{"id":172,"layer":"tile","type":"Floor","style":"Machine"},"180":{"id":180,"layer":"object","type":"FloorDecoration","style":"AirConditioner","top":0,"left":0},"199":{"id":199,"layer":"tile","type":"Floor","style":"HalfWall","blockVision":true,"canEnter":true},"200":{"id":200,"layer":"object","type":"FloorDecorationThemed","style":"Blank"},"210":{"id":210,"layer":"object","type":"FloorDecorationThemed","style":"TeacherDesk","top":-0.25},"215":{"id":215,"layer":"tile","type":"FloorExterior","style":"LongGrass"},"220":{"id":220,"layer":"object","type":"FloorDecorationThemed","style":"StudentDesk","top":-0.1},"230":{"id":230,"layer":"tile","type":"FloorExterior","style":"Gravel"},"235":{"id":235,"layer":"tile","type":"FloorExterior","style":"Asphalt"},"240":{"id":240,"layer":"tile","type":"FloorExterior","style":"Snow"},"250":{"id":250,"layer":"object","type":"FloorDecorationThemed","style":"SinkDishes","top":-0.35},"260":{"id":260,"layer":"object","type":"FloorDecorationThemed","style":"LaundryMachine","top":-0.55,"height":1.25},"270":{"id":270,"layer":"object","type":"FloorDecorationThemed","style":"IroningBoard","top":-0.35},"280":{"id":280,"layer":"tile","type":"FloorExterior","style":"ScatteredLeavesThick"},"300":{"id":300,"layer":"object","type":"FloorDecorationThemed","style":"ShibariFrame","top":-1,"height":2},"310":{"id":310,"layer":"object","type":"FloorDecorationThemed","style":"JapaneseTable","top":-0.1},"320":{"id":320,"layer":"object","type":"FloorDecorationThemed","style":"BanzaiTree","top":-0.1},"350":{"id":350,"layer":"object","type":"FloorDecorationThemed","style":"MedicalDesk","top":-0.15},"370":{"id":370,"layer":"object","type":"FloorDecorationThemed","style":"Toilet","top":-0.65,"height":1.5,"left":0.05,"width":0.9},"380":{"id":380,"layer":"object","type":"FloorDecorationThemed","style":"DeskBlue"},"381":{"id":381,"layer":"object","type":"FloorDecorationThemed","style":"DeskPurple"},"382":{"id":382,"layer":"object","type":"FloorDecorationThemed","style":"ConsoleLeft","top":-0.3,"height":1.3,"left":0,"width":1},"383":{"id":383,"layer":"object","type":"FloorDecorationThemed","style":"ConsoleRight","top":-0.3,"height":1.3,"left":0,"width":1},"384":{"id":384,"layer":"object","type":"FloorDecorationThemed","style":"LongDeskLeft","top":-0.3,"height":1.3,"left":0,"width":1},"385":{"id":385,"layer":"object","type":"FloorDecorationThemed","style":"LongDeskRight","top":-0.3,"height":1.3,"left":0,"width":1},"386":{"id":386,"layer":"object","type":"FloorDecorationThemed","style":"Cabinet","top":-0.9,"height":2,"left":0,"width":1},"387":{"id":387,"layer":"object","type":"FloorDecorationThemed","style":"Television","top":-0.3,"height":1.3,"left":0,"width":1},"388":{"id":388,"layer":"object","type":"FloorDecorationThemed","style":"TelevisionBack","top":-0.3,"height":1.3,"left":0,"width":1},"389":{"id":389,"layer":"object","type":"FloorDecorationThemed","style":"Wardrobe","top":-0.9,"height":2,"left":0,"width":1},"390":{"id":390,"layer":"object","type":"FloorDecorationThemed","style":"StandingBellflowerBanner","top":-1.1,"height":1.7,"left":0.15,"width":0.7},"391":{"id":391,"layer":"object","type":"FloorDecorationThemed","style":"BondageClubBanner","top":-1.1,"height":1.7,"left":0.15,"width":0.7},"392":{"id":392,"layer":"object","type":"FloorDecorationThemed","style":"VoidOrderBanner","top":-0.9,"height":1.5,"left":0.13,"width":0.7},"393":{"id":393,"layer":"object","type":"FloorDecorationThemed","style":"KatanaOnStand","top":-0.4,"height":1,"left":0.1,"width":0.8},"394":{"id":394,"layer":"object","type":"FloorDecorationThemed","style":"MagicMark","top":0.03,"height":0.9,"left":0.05,"width":0.9},"500":{"id":500,"layer":"object","type":"FloorDecorationParty","style":"Blank"},"510":{"id":510,"layer":"object","type":"FloorDecorationParty","style":"BalloonFiveColor","top":-0.6,"height":1.5},"511":{"id":511,"layer":"object","type":"FloorDecorationParty","style":"BalloonTwoHeart","top":-0.15},"520":{"id":520,"layer":"object","type":"FloorDecorationParty","style":"WeddingCake","top":-1,"height":2},"521":{"id":521,"layer":"object","type":"FloorDecorationParty","style":"WeddingArch","top":-1,"height":2},"530":{"id":530,"layer":"object","type":"FloorDecorationParty","style":"FlowerVasePink","top":-0.33},"560":{"id":560,"layer":"object","type":"FloorDecorationParty","style":"BeachUmbrellaStripe","top":-1.1,"height":2},"570":{"id":570,"layer":"object","type":"FloorDecorationParty","style":"BeachTowelStripe"},"580":{"id":580,"layer":"object","type":"FloorDecorationParty","style":"Speaker","top":-1.2,"height":1.85},"590":{"id":590,"layer":"object","type":"FloorDecorationParty","style":"Presents","top":0.25,"height":0.5},"600":{"id":600,"layer":"object","type":"FloorDecorationCamping","style":"Blank"},"610":{"id":610,"layer":"object","type":"FloorDecorationCamping","style":"LogFire","top":-0.35},"611":{"id":611,"layer":"object","type":"FloorDecorationCamping","style":"LogFireAnim0","top":-0.5,"height":1,"animated":true},"620":{"id":620,"layer":"object","type":"FloorDecorationCamping","style":"LogSingle","top":-0.2},"630":{"id":630,"layer":"object","type":"FloorDecorationCamping","style":"TentBlue","top":-0.3},"640":{"id":640,"layer":"object","type":"FloorDecorationCamping","style":"SleepingBagBlue"},"650":{"id":650,"layer":"object","type":"FloorDecorationCamping","style":"ChairRed","top":-0.35},"660":{"id":660,"layer":"object","type":"FloorDecorationCamping","style":"Hurdle1","canEnter":true},"670":{"id":670,"layer":"object","type":"FloorDecorationCamping","style":"Hurdle2","canEnter":true},"680":{"id":680,"layer":"object","type":"FloorDecorationCamping","style":"Hurdle3"},"700":{"id":700,"layer":"object","type":"FloorDecorationExpanding","style":"Blank"},"710":{"id":710,"layer":"object","type":"FloorDecorationExpanding","style":"CouchPinkPreview","top":-0.35,"animated":true},"720":{"id":720,"layer":"object","type":"FloorDecorationExpanding","style":"BedBluePreview","top":-1,"height":2,"animated":true},"730":{"id":730,"layer":"object","type":"FloorDecorationExpanding","style":"BallPitPreview","top":-0.25,"height":1.25,"animated":true},"740":{"id":740,"layer":"object","type":"FloorDecorationExpanding","style":"VikingTablePreview","top":-0.25,"height":1.25,"animated":true},"750":{"id":750,"layer":"object","type":"FloorDecorationExpanding","style":"RailroadPreview","top":0,"animated":true},"800":{"id":800,"layer":"object","type":"FloorDecorationAnimal","style":"Blank"},"810":{"id":810,"layer":"object","type":"FloorDecorationAnimal","style":"CatCaramelHappy","top":-0.2,"animated":true},"820":{"id":820,"layer":"object","type":"FloorDecorationAnimal","style":"DogBrownHappy","top":-0.4,"animated":true},"830":{"id":830,"layer":"object","type":"FloorDecorationAnimal","style":"RabbitBrownStand","top":-0.3,"animated":true},"840":{"id":840,"layer":"object","type":"FloorDecorationAnimal","style":"ChickenBrownIdleLeft","height":0.5,"left":0.25,"width":0.5,"animated":true},"1000":{"id":1000,"layer":"object","type":"FloorItem","style":"Blank"},"1001":{"id":1001,"layer":"tile","type":"Wall","style":"CedarWood","blockVision":true,"canEnter":true},"1010":{"id":1010,"layer":"object","type":"FloorItem","style":"Kennel","asset":"ItemDevices:Kennel","top":-1,"height":2},"1020":{"id":1020,"layer":"object","type":"FloorItem","style":"X-Cross","asset":"ItemDevices:X-Cross","top":-1,"height":2},"1030":{"id":1030,"layer":"object","type":"FloorItem","style":"BondageBench","asset":"ItemDevices:BondageBench","top":-1,"height":2},"1040":{"id":1040,"layer":"object","type":"FloorItem","style":"Trolley","asset":"ItemDevices:Trolley","top":-1,"height":2},"1050":{"id":1050,"layer":"object","type":"FloorItem","style":"Locker","asset":"ItemDevices:Locker","top":-1,"height":2},"1060":{"id":1060,"layer":"object","type":"FloorItem","style":"WoodenBox","asset":"ItemDevices:WoodenBox","top":-1,"height":2},"1070":{"id":1070,"layer":"object","type":"FloorItem","style":"Coffin","asset":"ItemDevices:Coffin","top":-1.2,"height":1.85},"1080":{"id":1080,"layer":"object","type":"FloorItem","style":"TheDisplayFrame","asset":"ItemDevices:TheDisplayFrame","top":-1,"height":2},"1090":{"id":1090,"layer":"object","type":"FloorItem","style":"Pole","asset":"ItemDevices:Pole","top":-0.85,"height":1.8},"1095":{"id":1095,"layer":"object","type":"FloorItem","style":"MedicalBed","asset":"ItemDevices:MedicalBed","top":-0.82,"height":1.8,"left":0.05,"width":0.9},"1096":{"id":1096,"layer":"object","type":"FloorItem","style":"FuturisticCrate","asset":"ItemDevices:FuturisticCrate","top":-0.95,"height":2},"1100":{"id":1100,"layer":"object","type":"FloorNumber","style":"Blank"},"1110":{"id":1110,"layer":"object","type":"FloorNumber","style":"Number0"},"1111":{"id":1111,"layer":"object","type":"FloorNumber","style":"Number1"},"1112":{"id":1112,"layer":"object","type":"FloorNumber","style":"Number2"},"1113":{"id":1113,"layer":"object","type":"FloorNumber","style":"Number3"},"1114":{"id":1114,"layer":"object","type":"FloorNumber","style":"Number4"},"1115":{"id":1115,"layer":"object","type":"FloorNumber","style":"Number5"},"1116":{"id":1116,"layer":"object","type":"FloorNumber","style":"Number6"},"1117":{"id":1117,"layer":"object","type":"FloorNumber","style":"Number7"},"1118":{"id":1118,"layer":"object","type":"FloorNumber","style":"Number8"},"1119":{"id":1119,"layer":"object","type":"FloorNumber","style":"Number9"},"1200":{"id":1200,"layer":"object","type":"FloorLetter","style":"Blank"},"1201":{"id":1201,"layer":"object","type":"FloorLetter","style":"LetterA"},"1202":{"id":1202,"layer":"object","type":"FloorLetter","style":"LetterB"},"1203":{"id":1203,"layer":"object","type":"FloorLetter","style":"LetterC"},"1204":{"id":1204,"layer":"object","type":"FloorLetter","style":"LetterD"},"1205":{"id":1205,"layer":"object","type":"FloorLetter","style":"LetterE"},"1206":{"id":1206,"layer":"object","type":"FloorLetter","style":"LetterF"},"1207":{"id":1207,"layer":"object","type":"FloorLetter","style":"LetterG"},"1208":{"id":1208,"layer":"object","type":"FloorLetter","style":"LetterH"},"1209":{"id":1209,"layer":"object","type":"FloorLetter","style":"LetterI"},"1210":{"id":1210,"layer":"object","type":"FloorLetter","style":"LetterJ"},"1211":{"id":1211,"layer":"object","type":"FloorLetter","style":"LetterK"},"1212":{"id":1212,"layer":"object","type":"FloorLetter","style":"LetterL"},"1213":{"id":1213,"layer":"object","type":"FloorLetter","style":"LetterM"},"1214":{"id":1214,"layer":"object","type":"FloorLetter","style":"LetterN"},"1215":{"id":1215,"layer":"object","type":"FloorLetter","style":"LetterO"},"1216":{"id":1216,"layer":"object","type":"FloorLetter","style":"LetterP"},"1217":{"id":1217,"layer":"object","type":"FloorLetter","style":"LetterQ"},"1218":{"id":1218,"layer":"object","type":"FloorLetter","style":"LetterR"},"1219":{"id":1219,"layer":"object","type":"FloorLetter","style":"LetterS"},"1220":{"id":1220,"layer":"object","type":"FloorLetter","style":"LetterT"},"1221":{"id":1221,"layer":"object","type":"FloorLetter","style":"LetterU"},"1222":{"id":1222,"layer":"object","type":"FloorLetter","style":"LetterV"},"1223":{"id":1223,"layer":"object","type":"FloorLetter","style":"LetterW"},"1224":{"id":1224,"layer":"object","type":"FloorLetter","style":"LetterX"},"1225":{"id":1225,"layer":"object","type":"FloorLetter","style":"LetterY"},"1226":{"id":1226,"layer":"object","type":"FloorLetter","style":"LetterZ"},"1300":{"id":1300,"layer":"object","type":"FloorIcon","style":"Blank"},"1301":{"id":1301,"layer":"object","type":"FloorIcon","style":"IconCircle"},"1302":{"id":1302,"layer":"object","type":"FloorIcon","style":"IconSquare"},"1303":{"id":1303,"layer":"object","type":"FloorIcon","style":"IconTriangle"},"1304":{"id":1304,"layer":"object","type":"FloorIcon","style":"IconCross"},"1305":{"id":1305,"layer":"object","type":"FloorIcon","style":"IconDiamond"},"1306":{"id":1306,"layer":"object","type":"FloorIcon","style":"IconArrowUp"},"1307":{"id":1307,"layer":"object","type":"FloorIcon","style":"IconArrowDown"},"1308":{"id":1308,"layer":"object","type":"FloorIcon","style":"IconArrowLeft"},"1309":{"id":1309,"layer":"object","type":"FloorIcon","style":"IconArrowRight"},"2000":{"id":2000,"layer":"object","type":"FloorObstacle","style":"Blank","canEnter":true},"2004":{"id":2004,"layer":"object","type":"FloorObstacle","style":"Stalagmite","top":-0.125,"height":1,"canEnter":true},"2005":{"id":2005,"layer":"object","type":"FloorObstacle","style":"Rocks","top":-0.125,"height":1.125,"canEnter":true},"2006":{"id":2006,"layer":"object","type":"FloorObstacle","style":"GoldStones","top":0.1,"height":0.5,"left":0.25,"width":0.5,"canEnter":true},"2007":{"id":2007,"layer":"object","type":"FloorObstacle","style":"StonePile","top":0.1,"height":0.5,"left":0.25,"width":0.5,"canEnter":true},"2010":{"id":2010,"layer":"object","type":"FloorObstacle","style":"Statue","top":-1,"height":2,"canEnter":true},"2011":{"id":2011,"layer":"object","type":"FloorObstacle","style":"Knight","top":-1.25,"height":1.65,"left":0.05,"width":0.75,"canEnter":true},"2012":{"id":2012,"layer":"object","type":"FloorObstacle","style":"Samurai","top":-1.25,"height":1.75,"left":0.05,"width":0.85,"canEnter":true},"2013":{"id":2013,"layer":"object","type":"FloorObstacle","style":"Totem","top":-1,"height":2,"canEnter":true},"2014":{"id":2014,"layer":"object","type":"FloorObstacle","style":"EasterIsland","top":-1,"height":2,"canEnter":true},"2015":{"id":2015,"layer":"object","type":"FloorObstacle","style":"OrderOfTheVoidTotem","top":-1,"height":2,"canEnter":true},"2020":{"id":2020,"layer":"object","type":"FloorObstacle","style":"Barrel","top":-0.5,"height":1.5,"canEnter":true},"2025":{"id":2025,"layer":"object","type":"FloorObstacle","style":"Chest","top":0,"height":1,"canEnter":true},"2030":{"id":2030,"layer":"object","type":"FloorObstacle","style":"IronBars","top":-1,"height":2,"canEnter":true},"2031":{"id":2031,"layer":"object","type":"FloorObstacle","style":"BarbFence","top":-1,"height":2,"canEnter":true},"2032":{"id":2032,"layer":"object","type":"FloorObstacle","style":"PicketFence","top":-0.8,"height":0.75,"width":1,"canEnter":true},"2033":{"id":2033,"layer":"object","type":"FloorObstacle","style":"VelourRopeBarrier","top":-0.35,"animated":true},"2035":{"id":2035,"layer":"object","type":"FloorObstacle","style":"Bush","top":-0.25,"height":1,"canEnter":true},"2040":{"id":2040,"layer":"object","type":"FloorObstacle","style":"OakTree","top":-1.5,"height":2.5,"left":-0.25,"width":1.5,"canEnter":true},"2045":{"id":2045,"layer":"object","type":"FloorObstacle","style":"OakTree_Fall","top":-1.5,"height":2.5,"left":-0.25,"width":1.5,"canEnter":true},"2048":{"id":2048,"layer":"object","type":"FloorObstacle","style":"LeaflessTree","top":-1.25,"height":2,"canEnter":true},"2050":{"id":2050,"layer":"object","type":"FloorObstacle","style":"PineTree","top":-1,"height":2,"canEnter":true},"2055":{"id":2055,"layer":"object","type":"FloorObstacle","style":"PalmTree","top":-1.5,"height":2.5,"left":-0.3,"width":1.65,"canEnter":true},"2057":{"id":2057,"layer":"object","type":"FloorObstacle","style":"Cactus","top":-1.2,"height":1.8,"left":-0.2,"width":1.3,"canEnter":true},"2059":{"id":2059,"layer":"object","type":"FloorObstacle","style":"Sakura","top":-1.5,"height":2,"left":-0.3,"width":1.3,"canEnter":true},"2060":{"id":2060,"layer":"object","type":"FloorObstacle","style":"ChristmasTree","top":-1,"height":2,"canEnter":true},"2070":{"id":2070,"layer":"object","type":"FloorObstacle","style":"Window","top":-0.5,"height":1.5,"canEnter":true},"2080":{"id":2080,"layer":"object","type":"FloorObstacle","style":"TrashCan","top":-0.25,"height":0.75,"width":0.75,"canEnter":true},"2085":{"id":2085,"layer":"object","type":"FloorObstacle","style":"RoadCone","top":0,"height":0.75,"left":0.13,"width":0.75,"canEnter":true},"2090":{"id":2090,"layer":"object","type":"FloorObstacle","style":"LampPost","top":-1.25,"height":2,"canEnter":true},"2098":{"id":2098,"layer":"object","type":"FloorObstacle","style":"Pillar","top":-1.25,"height":2,"left":0.16,"width":0.7,"canEnter":true},"3000":{"id":3000,"layer":"object","type":"WallDecoration","style":"Blank"},"3010":{"id":3010,"layer":"object","type":"WallDecoration","style":"Painting"},"3020":{"id":3020,"layer":"object","type":"WallDecoration","style":"Mirror"},"3030":{"id":3030,"layer":"object","type":"WallDecoration","style":"Candelabra0","animated":true},"3040":{"id":3040,"layer":"object","type":"WallDecoration","style":"Whip"},"3050":{"id":3050,"layer":"object","type":"WallDecoration","style":"Fireplace"},"3060":{"id":3060,"layer":"object","type":"WallDecoration","style":"Stocking","top":0.35,"height":0.5,"left":0.25,"width":0.5},"3070":{"id":3070,"layer":"object","type":"WallDecoration","style":"Moss","top":0.15,"height":0.8},"3075":{"id":3075,"layer":"object","type":"WallDecoration","style":"Vines","top":0.15,"height":0.8},"3076":{"id":3076,"layer":"object","type":"WallDecoration","style":"Vines2","top":0.15,"height":0.8},"3100":{"id":3100,"layer":"object","type":"WallDecoration","style":"SilverShield"},"3110":{"id":3110,"layer":"object","type":"WallDecoration","style":"CrossedSabers"},"3120":{"id":3120,"layer":"object","type":"WallDecoration","style":"Window","top":0.2,"height":0.8,"left":0.1,"width":0.8},"3121":{"id":3121,"layer":"object","type":"WallDecoration","style":"WindowNight","top":0.22,"height":0.8,"left":0.1,"width":0.8},"3122":{"id":3122,"layer":"object","type":"WallDecoration","style":"StainedGlass","top":0.25,"height":0.75,"left":0.13,"width":0.75},"3200":{"id":3200,"layer":"object","type":"WallDecoration","style":"SchoolBoard"},"3250":{"id":3250,"layer":"object","type":"WallDecoration","style":"FirstAidKit"},"3260":{"id":3260,"layer":"object","type":"WallDecoration","style":"EyeTest"},"3261":{"id":3261,"layer":"object","type":"WallDecoration","style":"Scroll","top":0.3,"height":0.6,"left":0.2,"width":0.6},"3262":{"id":3262,"layer":"object","type":"WallDecoration","style":"Wanted","top":0.25,"height":0.7,"left":0.2,"width":0.6},"3270":{"id":3270,"layer":"object","type":"WallDecoration","style":"Bookshelf"},"3275":{"id":3275,"layer":"object","type":"WallDecoration","style":"AirConditioner","top":0.27,"height":0.8},"3280":{"id":3280,"layer":"object","type":"WallDecoration","style":"ShowerHead"},"3290":{"id":3290,"layer":"object","type":"WallDecoration","style":"EnemaHead"},"3301":{"id":3301,"layer":"object","type":"WallDecoration","style":"MonitorSmall"},"3302":{"id":3302,"layer":"object","type":"WallDecoration","style":"MonitorBigLeft"},"3303":{"id":3303,"layer":"object","type":"WallDecoration","style":"MonitorBigRight"},"4000":{"id":4000,"layer":"object","type":"WallPath","style":"Blank","canEnter":true},"4010":{"id":4010,"layer":"object","type":"WallPath","style":"WoodOpen","top":-1,"height":2,"canEnter":true},"4011":{"id":4011,"layer":"object","type":"WallPath","style":"WoodClosed","occupiedStyle":"WoodOpen","top":-1,"height":2,"canEnter":true},"4012":{"id":4012,"layer":"object","type":"WallPath","style":"WoodLocked","occupiedStyle":"WoodOpen","top":-1,"height":2,"canEnter":true},"4013":{"id":4013,"layer":"object","type":"WallPath","style":"WoodLockedBronze","occupiedStyle":"WoodOpen","top":-1,"height":2,"canEnter":true},"4014":{"id":4014,"layer":"object","type":"WallPath","style":"WoodLockedSilver","occupiedStyle":"WoodOpen","top":-1,"height":2,"canEnter":true},"4015":{"id":4015,"layer":"object","type":"WallPath","style":"WoodLockedGold","occupiedStyle":"WoodOpen","top":-1,"height":2,"canEnter":true},"4020":{"id":4020,"layer":"object","type":"WallPath","style":"Metal","occupiedStyle":"MetalOpen","top":-1,"height":2,"canEnter":true},"4021":{"id":4021,"layer":"object","type":"WallPath","style":"MetalUp","occupiedStyle":"MetalOpen","top":-1,"height":2,"canEnter":true},"4022":{"id":4022,"layer":"object","type":"WallPath","style":"MetalDown","occupiedStyle":"MetalOpen","top":-1,"height":2,"canEnter":true},"4023":{"id":4023,"layer":"object","type":"WallPath","style":"MetalLockedBronze","occupiedStyle":"MetalOpen","top":-1,"height":2,"canEnter":true},"4024":{"id":4024,"layer":"object","type":"WallPath","style":"MetalLockedSilver","occupiedStyle":"MetalOpen","top":-1,"height":2,"canEnter":true},"4025":{"id":4025,"layer":"object","type":"WallPath","style":"MetalLockedGold","occupiedStyle":"MetalOpen","top":-1,"height":2,"canEnter":true},"4030":{"id":4030,"layer":"object","type":"WallPath","style":"BrownDoor","occupiedStyle":"BrownDoorOpen","top":-0.55,"height":1.55,"left":0.06,"width":0.85,"canEnter":true},"4031":{"id":4031,"layer":"object","type":"WallPath","style":"BrownDoorOpen","top":-0.55,"height":1.55,"left":0.06,"width":0.85,"canEnter":true},"4032":{"id":4032,"layer":"object","type":"WallPath","style":"RoyalDoor","occupiedStyle":"RoyalDoorOpen","top":-0.55,"height":1.55,"left":0.06,"width":0.85,"canEnter":true},"4033":{"id":4033,"layer":"object","type":"WallPath","style":"RoyalDoorOpen","top":-0.55,"height":1.55,"left":0.06,"width":0.85,"canEnter":true},"4034":{"id":4034,"layer":"object","type":"WallPath","style":"SteelDoor","occupiedStyle":"SteelDoorOpen","top":-0.55,"height":1.55,"left":0.06,"width":0.85,"canEnter":true},"4035":{"id":4035,"layer":"object","type":"WallPath","style":"SteelDoorOpen","top":-0.55,"height":1.55,"left":0.06,"width":0.85,"canEnter":true},"4036":{"id":4036,"layer":"object","type":"WallPath","style":"GrayDoor","occupiedStyle":"GrayDoorOpen","top":-0.55,"height":1.55,"left":0.06,"width":0.85,"canEnter":true},"4037":{"id":4037,"layer":"object","type":"WallPath","style":"GrayDoorOpen","top":-0.55,"height":1.55,"left":0.06,"width":0.85,"canEnter":true},"5010":{"id":5010,"layer":"object","type":"Banners","style":"Red","top":0.25,"height":0.6,"left":0.25,"width":0.5},"5011":{"id":5011,"layer":"object","type":"Banners","style":"Blue","top":0.25,"height":0.6,"left":0.25,"width":0.5},"5012":{"id":5012,"layer":"object","type":"Banners","style":"Green","top":0.25,"height":0.6,"left":0.25,"width":0.5},"5013":{"id":5013,"layer":"object","type":"Banners","style":"Yellow","top":0.25,"height":0.6,"left":0.25,"width":0.5},"5014":{"id":5014,"layer":"object","type":"Banners","style":"Black","top":0.25,"height":0.6,"left":0.25,"width":0.5},"5015":{"id":5015,"layer":"object","type":"Banners","style":"PaladinBanner","top":0.25,"height":0.6,"left":0.25,"width":0.5},"5016":{"id":5016,"layer":"object","type":"Banners","style":"ServiOrdinisBanner","top":0.25,"height":0.6,"left":0.25,"width":0.5},"5017":{"id":5017,"layer":"object","type":"Banners","style":"BellflowerBanner","top":0.25,"height":0.6,"left":0.25,"width":0.5},"5018":{"id":5018,"layer":"object","type":"Banners","style":"BondageClub","top":0.25,"height":0.6,"left":0.25,"width":0.5},"5019":{"id":5019,"layer":"object","type":"Banners","style":"Inquisition","top":0.25,"height":0.6,"left":0.25,"width":0.5},"5020":{"id":5020,"layer":"object","type":"Banners","style":"MagesSacrosanctorum","top":0.25,"height":0.6,"left":0.25,"width":0.5},"5021":{"id":5021,"layer":"object","type":"Banners","style":"MaidSorority","top":0.25,"height":0.6,"left":0.25,"width":0.5},"5022":{"id":5022,"layer":"object","type":"Banners","style":"Priesthood","top":0.25,"height":0.6,"left":0.25,"width":0.5},"5023":{"id":5023,"layer":"object","type":"Banners","style":"VoidOrder","top":0.25,"height":0.6,"left":0.25,"width":0.5}},"byStyle":{"Floor:OakWood":100,"Floor:Stone":110,"Floor:Pavement":115,"Floor:Ceramic":120,"Floor:CeramicDark":121,"Floor:CarpetPink":130,"Floor:CarpetBlue":131,"Floor:CarpetRed":132,"Floor:Padded":140,"Floor:LatexFloor":150,"Floor:Tile":160,"Floor:HexBlue":170,"Floor:HexPurple":171,"Floor:Machine":172,"Floor:HalfWall":199,"FloorExterior:Dirt":200,"FloorExterior:Grass":210,"FloorExterior:LongGrass":215,"FloorExterior:Sand":220,"FloorExterior:Gravel":230,"FloorExterior:Asphalt":235,"FloorExterior:Snow":240,"FloorExterior:StoneSquareGray":250,"FloorExterior:ScatteredLeaves":260,"FloorExterior:ScatteredLeavesDirt":270,"FloorExterior:ScatteredLeavesThick":280,"Wall:MixedWood":1000,"Wall:CedarWood":1001,"Wall:Log":1010,"Wall:Japanese":1020,"Wall:Stone":1030,"Wall:Brick":1040,"Wall:Dungeon":1050,"Wall:Square":1060,"Wall:Steel":1070,"Wall:Padded":1080,"Wall:Tile":1090,"Wall:Lattice":1100,"Wall:HexBlue":1200,"Wall:HexPurple":1201,"Wall:PipeBlue":1202,"Wall:PipePurple":1203,"Wall:SteelBlack":1204,"Wall:SteelGary":1205,"Water:Pool":2000,"Water:Sea":2010,"Water:Ocean":2020,"Water:OceanCyan":2025,"Water:OceanCalm":2030,"Water:Swamp":2040,"Water:Waves":2050,"Water:Shallow":2060,"Water:Lava":2090,"FloorDecoration:Blank":100,"FloorDecoration:EntryFlag":110,"FloorDecoration:ExitFlag":115,"FloorDecoration:BedTeal":120,"FloorDecoration:PillowPink":130,"FloorDecoration:TableBrown":140,"FloorDecoration:ChairWood":151,"FloorDecoration:ThroneRed":150,"FloorDecoration:KeyBronze":160,"FloorDecoration:KeySilver":162,"FloorDecoration:KeyGold":164,"FloorDecoration:VikingChair":165,"FloorDecoration:Bed":166,"FloorDecoration:Stairs":170,"FloorDecoration:AirConditioner":180,"FloorDecorationThemed:Blank":200,"FloorDecorationThemed:TeacherDesk":210,"FloorDecorationThemed:StudentDesk":220,"FloorDecorationThemed:SinkDishes":250,"FloorDecorationThemed:LaundryMachine":260,"FloorDecorationThemed:IroningBoard":270,"FloorDecorationThemed:ShibariFrame":300,"FloorDecorationThemed:JapaneseTable":310,"FloorDecorationThemed:BanzaiTree":320,"FloorDecorationThemed:MedicalDesk":350,"FloorDecorationThemed:Toilet":370,"FloorDecorationThemed:DeskBlue":380,"FloorDecorationThemed:DeskPurple":381,"FloorDecorationThemed:ConsoleLeft":382,"FloorDecorationThemed:ConsoleRight":383,"FloorDecorationThemed:LongDeskLeft":384,"FloorDecorationThemed:LongDeskRight":385,"FloorDecorationThemed:Cabinet":386,"FloorDecorationThemed:Television":387,"FloorDecorationThemed:TelevisionBack":388,"FloorDecorationThemed:Wardrobe":389,"FloorDecorationThemed:StandingBellflowerBanner":390,"FloorDecorationThemed:BondageClubBanner":391,"FloorDecorationThemed:VoidOrderBanner":392,"FloorDecorationThemed:KatanaOnStand":393,"FloorDecorationThemed:MagicMark":394,"FloorDecorationParty:Blank":500,"FloorDecorationParty:BalloonFiveColor":510,"FloorDecorationParty:BalloonTwoHeart":511,"FloorDecorationParty:WeddingCake":520,"FloorDecorationParty:WeddingArch":521,"FloorDecorationParty:FlowerVasePink":530,"FloorDecorationParty:BeachUmbrellaStripe":560,"FloorDecorationParty:BeachTowelStripe":570,"FloorDecorationParty:Speaker":580,"FloorDecorationParty:Presents":590,"FloorDecorationCamping:Blank":600,"FloorDecorationCamping:LogFire":610,"FloorDecorationCamping:LogFireAnim0":611,"FloorDecorationCamping:LogSingle":620,"FloorDecorationCamping:TentBlue":630,"FloorDecorationCamping:SleepingBagBlue":640,"FloorDecorationCamping:ChairRed":650,"FloorDecorationCamping:Hurdle1":660,"FloorDecorationCamping:Hurdle2":670,"FloorDecorationCamping:Hurdle3":680,"FloorDecorationExpanding:Blank":700,"FloorDecorationExpanding:CouchPinkPreview":710,"FloorDecorationExpanding:BedBluePreview":720,"FloorDecorationExpanding:BallPitPreview":730,"FloorDecorationExpanding:VikingTablePreview":740,"FloorDecorationExpanding:RailroadPreview":750,"FloorDecorationAnimal:Blank":800,"FloorDecorationAnimal:CatCaramelHappy":810,"FloorDecorationAnimal:DogBrownHappy":820,"FloorDecorationAnimal:RabbitBrownStand":830,"FloorDecorationAnimal:ChickenBrownIdleLeft":840,"FloorItem:Blank":1000,"FloorItem:Kennel":1010,"FloorItem:X-Cross":1020,"FloorItem:BondageBench":1030,"FloorItem:Trolley":1040,"FloorItem:Locker":1050,"FloorItem:WoodenBox":1060,"FloorItem:Coffin":1070,"FloorItem:TheDisplayFrame":1080,"FloorItem:Pole":1090,"FloorItem:MedicalBed":1095,"FloorItem:FuturisticCrate":1096,"FloorNumber:Blank":1100,"FloorNumber:Number0":1110,"FloorNumber:Number1":1111,"FloorNumber:Number2":1112,"FloorNumber:Number3":1113,"FloorNumber:Number4":1114,"FloorNumber:Number5":1115,"FloorNumber:Number6":1116,"FloorNumber:Number7":1117,"FloorNumber:Number8":1118,"FloorNumber:Number9":1119,"FloorLetter:Blank":1200,"FloorLetter:LetterA":1201,"FloorLetter:LetterB":1202,"FloorLetter:LetterC":1203,"FloorLetter:LetterD":1204,"FloorLetter:LetterE":1205,"FloorLetter:LetterF":1206,"FloorLetter:LetterG":1207,"FloorLetter:LetterH":1208,"FloorLetter:LetterI":1209,"FloorLetter:LetterJ":1210,"FloorLetter:LetterK":1211,"FloorLetter:LetterL":1212,"FloorLetter:LetterM":1213,"FloorLetter:LetterN":1214,"FloorLetter:LetterO":1215,"FloorLetter:LetterP":1216,"FloorLetter:LetterQ":1217,"FloorLetter:LetterR":1218,"FloorLetter:LetterS":1219,"FloorLetter:LetterT":1220,"FloorLetter:LetterU":1221,"FloorLetter:LetterV":1222,"FloorLetter:LetterW":1223,"FloorLetter:LetterX":1224,"FloorLetter:LetterY":1225,"FloorLetter:LetterZ":1226,"FloorIcon:Blank":1300,"FloorIcon:IconCircle":1301,"FloorIcon:IconSquare":1302,"FloorIcon:IconTriangle":1303,"FloorIcon:IconCross":1304,"FloorIcon:IconDiamond":1305,"FloorIcon:IconArrowUp":1306,"FloorIcon:IconArrowDown":1307,"FloorIcon:IconArrowLeft":1308,"FloorIcon:IconArrowRight":1309,"FloorObstacle:Blank":2000,"FloorObstacle:Stalagmite":2004,"FloorObstacle:Rocks":2005,"FloorObstacle:GoldStones":2006,"FloorObstacle:StonePile":2007,"FloorObstacle:Statue":2010,"FloorObstacle:Knight":2011,"FloorObstacle:Samurai":2012,"FloorObstacle:Totem":2013,"FloorObstacle:EasterIsland":2014,"FloorObstacle:OrderOfTheVoidTotem":2015,"FloorObstacle:Barrel":2020,"FloorObstacle:Chest":2025,"FloorObstacle:IronBars":2030,"FloorObstacle:BarbFence":2031,"FloorObstacle:PicketFence":2032,"FloorObstacle:VelourRopeBarrier":2033,"FloorObstacle:Bush":2035,"FloorObstacle:OakTree":2040,"FloorObstacle:OakTree_Fall":2045,"FloorObstacle:LeaflessTree":2048,"FloorObstacle:PineTree":2050,"FloorObstacle:PalmTree":2055,"FloorObstacle:Sakura":2059,"FloorObstacle:Cactus":2057,"FloorObstacle:ChristmasTree":2060,"FloorObstacle:Window":2070,"FloorObstacle:TrashCan":2080,"FloorObstacle:RoadCone":2085,"FloorObstacle:LampPost":2090,"FloorObstacle:Pillar":2098,"WallDecoration:Blank":3000,"WallDecoration:Painting":3010,"WallDecoration:Mirror":3020,"WallDecoration:Candelabra0":3030,"WallDecoration:Whip":3040,"WallDecoration:Fireplace":3050,"WallDecoration:Stocking":3060,"WallDecoration:Moss":3070,"WallDecoration:Vines":3075,"WallDecoration:Vines2":3076,"WallDecoration:SilverShield":3100,"WallDecoration:CrossedSabers":3110,"WallDecoration:Window":3120,"WallDecoration:WindowNight":3121,"WallDecoration:StainedGlass":3122,"WallDecoration:SchoolBoard":3200,"WallDecoration:FirstAidKit":3250,"WallDecoration:EyeTest":3260,"WallDecoration:Scroll":3261,"WallDecoration:Wanted":3262,"WallDecoration:Bookshelf":3270,"WallDecoration:AirConditioner":3275,"WallDecoration:ShowerHead":3280,"WallDecoration:EnemaHead":3290,"WallDecoration:MonitorSmall":3301,"WallDecoration:MonitorBigLeft":3302,"WallDecoration:MonitorBigRight":3303,"WallPath:Blank":4000,"WallPath:WoodOpen":4010,"WallPath:WoodClosed":4011,"WallPath:WoodLocked":4012,"WallPath:WoodLockedBronze":4013,"WallPath:WoodLockedSilver":4014,"WallPath:WoodLockedGold":4015,"WallPath:Metal":4020,"WallPath:MetalUp":4021,"WallPath:MetalDown":4022,"WallPath:MetalLockedBronze":4023,"WallPath:MetalLockedSilver":4024,"WallPath:MetalLockedGold":4025,"WallPath:BrownDoor":4030,"WallPath:BrownDoorOpen":4031,"WallPath:RoyalDoor":4032,"WallPath:RoyalDoorOpen":4033,"WallPath:SteelDoor":4034,"WallPath:SteelDoorOpen":4035,"WallPath:GrayDoor":4036,"WallPath:GrayDoorOpen":4037,"Banners:Red":5010,"Banners:Blue":5011,"Banners:Green":5012,"Banners:Yellow":5013,"Banners:Black":5014,"Banners:PaladinBanner":5015,"Banners:ServiOrdinisBanner":5016,"Banners:BellflowerBanner":5017,"Banners:BondageClub":5018,"Banners:Inquisition":5019,"Banners:MagesSacrosanctorum":5020,"Banners:MaidSorority":5021,"Banners:Priesthood":5022,"Banners:VoidOrder":5023}};</script>
+  <script>// BC room-map string library (Node + browser compatible).
+// Builds the 40x40 Tiles/Objects char-code strings and encodes them into a
+// `/mappaste`-compatible string: LZString.compressToBase64(JSON.stringify({Type,Tiles,Objects,Fog})).
+(function (root, factory) {
+	const LZString = typeof require !== "undefined" ? require("./LZString") : root.LZString;
+	const catalog = typeof require !== "undefined" ? require("./catalog.json") : root.MAP_CATALOG;
+	const lib = factory(LZString, catalog);
+	if (typeof module !== "undefined" && module.exports) module.exports = lib;
+	if (typeof window !== "undefined") window.MapLib = lib;
+})(typeof self !== "undefined" ? self : this, function (LZString, catalog) {
+	const W = catalog.width; // 40
+	const H = catalog.height; // 40
+	const BLANK = catalog.blankId; // 100
+
+	function idx(x, y) {
+		return x + y * W;
+	}
+
+	// Create a 40x40 grid filled with `fill` (default blank id 100).
+	function createGrid(fill = BLANK) {
+		return Array.from({ length: H }, () => Array.from({ length: W }, () => fill));
+	}
+
+	function inBounds(x, y) {
+		return x >= 0 && x < W && y >= 0 && y < H;
+	}
+
+	function setCell(grid, x, y, id) {
+		if (!inBounds(x, y)) throw new Error(`out of bounds ${x},${y}`);
+		grid[y][x] = id;
+	}
+
+	// Flatten a grid to the 1600-char string. index = x + y*W, char = fromCharCode(id).
+	function gridToChars(grid) {
+		let s = "";
+		for (let y = 0; y < H; y++) {
+			for (let x = 0; x < W; x++) {
+				s += String.fromCharCode(grid[y][x]);
+			}
+		}
+		return s;
+	}
+
+	function charsToGrid(str) {
+		const g = createGrid(BLANK);
+		for (let i = 0; i < str.length && i < W * H; i++) {
+			g[Math.floor(i / W)][i % W] = str.charCodeAt(i);
+		}
+		return g;
+	}
+
+	// Validate ids exist in catalog; throws on unknown.
+	function validateId(id) {
+		if (!catalog.byId[id]) throw new Error(`unknown map component id: ${id}`);
+		return true;
+	}
+
+	// Encode a map description into a mappaste string.
+	// map = { type, tiles (grid|string), objects (grid|string), fog }
+	function encode(map) {
+		const tiles = typeof map.tiles === "string" ? map.tiles : gridToChars(map.tiles);
+		const objects = typeof map.objects === "string" ? map.objects : gridToChars(map.objects);
+		if (tiles.length !== W * H) throw new Error(`Tiles length ${tiles.length} != ${W * H}`);
+		if (objects.length !== W * H) throw new Error(`Objects length ${objects.length} != ${W * H}`);
+		for (const ch of tiles) validateId(ch.charCodeAt(0));
+		for (const ch of objects) validateId(ch.charCodeAt(0));
+		const payload = { Type: map.type || "Always", Tiles: tiles, Objects: objects };
+		if (typeof map.fog === "boolean") payload.Fog = map.fog;
+		return LZString.compressToBase64(JSON.stringify(payload));
+	}
+
+	// Decode a mappaste string back to { type, tiles, objects, fog } (for verification).
+	function decode(str) {
+		const json = LZString.decompressFromBase64(str);
+		if (!json) throw new Error("decompress failed");
+		const data = JSON.parse(json);
+		if (typeof data.Tiles !== "string" || data.Tiles.length !== W * H)
+			throw new Error("bad Tiles");
+		if (typeof data.Objects !== "string" || data.Objects.length !== W * H)
+			throw new Error("bad Objects");
+		return data;
+	}
+
+	// Convenience: look up an id by "Type:Style" (e.g. "WallPath:WoodLockedGold").
+	function idByStyle(key) {
+		return catalog.byStyle[key];
+	}
+
+	return {
+		W,
+		H,
+		BLANK,
+		catalog,
+		idx,
+		createGrid,
+		inBounds,
+		setCell,
+		gridToChars,
+		charsToGrid,
+		validateId,
+		encode,
+		decode,
+		idByStyle,
+	};
+});
+</script>
+  <script>// Chinese display labels for all BC map components.
+// Key = "Type:Style" (matches catalog byStyle keys), Value = Chinese name.
+window.MAP_ZH_LABELS = {
+  // === 地板 Floor ===
+  "Floor:OakWood": "橡木地板",
+  "Floor:Stone": "石砖地",
+  "Floor:Pavement": "人行道",
+  "Floor:Ceramic": "瓷砖",
+  "Floor:CeramicDark": "深色瓷砖",
+  "Floor:CarpetPink": "粉色地毯",
+  "Floor:CarpetBlue": "蓝色地毯",
+  "Floor:CarpetRed": "红色地毯",
+  "Floor:Padded": "软垫地板",
+  "Floor:LatexFloor": "乳胶地板",
+  "Floor:Tile": "方格地砖",
+  "Floor:HexBlue": "六角蓝砖",
+  "Floor:HexPurple": "六角紫砖",
+  "Floor:Machine": "机械地板",
+  "Floor:HalfWall": "半墙（挡视线）",
+
+  // === 地板·室外 FloorExterior ===
+  "FloorExterior:Dirt": "泥土",
+  "FloorExterior:Grass": "草地",
+  "FloorExterior:LongGrass": "长草",
+  "FloorExterior:Sand": "沙地",
+  "FloorExterior:Gravel": "碎石",
+  "FloorExterior:Asphalt": "沥青路",
+  "FloorExterior:Snow": "雪地",
+  "FloorExterior:StoneSquareGray": "灰石方砖",
+  "FloorExterior:ScatteredLeaves": "落叶",
+  "FloorExterior:ScatteredLeavesDirt": "落叶泥地",
+  "FloorExterior:ScatteredLeavesThick": "厚落叶",
+
+  // === 墙 Wall ===
+  "Wall:MixedWood": "混木板墙",
+  "Wall:CedarWood": "雪松墙",
+  "Wall:Log": "圆木墙",
+  "Wall:Japanese": "日式墙",
+  "Wall:Stone": "石墙",
+  "Wall:Brick": "砖墙",
+  "Wall:Dungeon": "地牢墙",
+  "Wall:Square": "方格墙（隔音）",
+  "Wall:Steel": "钢墙（隔音）",
+  "Wall:Padded": "软垫墙（隔音）",
+  "Wall:Tile": "瓷砖墙",
+  "Wall:Lattice": "格栅墙",
+  "Wall:HexBlue": "六角蓝墙",
+  "Wall:HexPurple": "六角紫墙",
+  "Wall:PipeBlue": "蓝管墙",
+  "Wall:PipePurple": "紫管墙",
+  "Wall:SteelBlack": "黑钢墙",
+  "Wall:SteelGary": "灰钢墙",
+
+  // === 水域 Water ===
+  "Water:Lava": "岩浆",
+  "Water:Ocean": "海洋",
+  "Water:OceanCalm": "平静海洋",
+  "Water:OceanCyan": "青色海",
+  "Water:Pool": "泳池",
+  "Water:Sea": "浅海",
+  "Water:Shallow": "浅水",
+  "Water:Swamp": "沼泽",
+  "Water:Waves": "波浪",
+
+  // === 门 WallPath ===
+  "WallPath:WoodOpen": "木门（开）",
+  "WallPath:WoodClosed": "木门（关）",
+  "WallPath:WoodLocked": "木门（锁）",
+  "WallPath:WoodLockedBronze": "铜锁木门",
+  "WallPath:WoodLockedSilver": "银锁木门",
+  "WallPath:WoodLockedGold": "金锁木门",
+  "WallPath:Metal": "金属门",
+  "WallPath:MetalUp": "单向金属门（上）",
+  "WallPath:MetalDown": "单向金属门（下）",
+  "WallPath:MetalLockedBronze": "铜锁金属门",
+  "WallPath:MetalLockedSilver": "银锁金属门",
+  "WallPath:MetalLockedGold": "金锁金属门",
+  "WallPath:BrownDoor": "棕门",
+  "WallPath:BrownDoorOpen": "棕门（开）",
+  "WallPath:RoyalDoor": "皇家门",
+  "WallPath:RoyalDoorOpen": "皇家门（开）",
+  "WallPath:SteelDoor": "钢门",
+  "WallPath:SteelDoorOpen": "钢门（开）",
+  "WallPath:GrayDoor": "灰门",
+  "WallPath:GrayDoorOpen": "灰门（开）",
+
+  // === 钥匙 FloorDecoration ===
+  "FloorDecoration:KeyBronze": "铜钥匙",
+  "FloorDecoration:KeySilver": "银钥匙",
+  "FloorDecoration:KeyGold": "金钥匙",
+
+  // === 标记 FloorDecoration ===
+  "FloorDecoration:EntryFlag": "出生点旗帜",
+  "FloorDecoration:ExitFlag": "出口旗帜",
+
+  // === 装饰·家具 FloorDecoration ===
+  "FloorDecoration:Blank": "空白",
+  "FloorDecoration:Bed": "床",
+  "FloorDecoration:BedTeal": "青色床",
+  "FloorDecoration:ChairWood": "木椅",
+  "FloorDecoration:PillowPink": "粉色枕头",
+  "FloorDecoration:Stairs": "楼梯",
+  "FloorDecoration:TableBrown": "棕色桌子",
+  "FloorDecoration:ThroneRed": "红色王座",
+  "FloorDecoration:VikingChair": "维京椅",
+  "FloorDecoration:AirConditioner": "空调",
+
+  // === 装饰·动物 FloorDecorationAnimal ===
+  "FloorDecorationAnimal:Blank": "空白动物位",
+  "FloorDecorationAnimal:CatCaramelHappy": "焦糖猫",
+  "FloorDecorationAnimal:ChickenBrownIdleLeft": "鸡",
+  "FloorDecorationAnimal:DogBrownHappy": "狗",
+  "FloorDecorationAnimal:RabbitBrownStand": "兔子",
+
+  // === 装饰·露营 FloorDecorationCamping ===
+  "FloorDecorationCamping:Blank": "空白露营位",
+  "FloorDecorationCamping:ChairRed": "红椅子",
+  "FloorDecorationCamping:Hurdle1": "跨栏1",
+  "FloorDecorationCamping:Hurdle2": "跨栏2",
+  "FloorDecorationCamping:Hurdle3": "跨栏3",
+  "FloorDecorationCamping:LogFire": "篝火",
+  "FloorDecorationCamping:LogFireAnim0": "篝火动画",
+  "FloorDecorationCamping:LogSingle": "原木",
+  "FloorDecorationCamping:SleepingBagBlue": "蓝色睡袋",
+  "FloorDecorationCamping:TentBlue": "蓝色帐篷",
+
+  // === 装饰·扩展 FloorDecorationExpanding ===
+  "FloorDecorationExpanding:Blank": "空白扩展位",
+  "FloorDecorationExpanding:BallPitPreview": "球池预览",
+  "FloorDecorationExpanding:BedBluePreview": "蓝床预览",
+  "FloorDecorationExpanding:CouchPinkPreview": "粉沙发预览",
+  "FloorDecorationExpanding:RailroadPreview": "轨道预览",
+  "FloorDecorationExpanding:VikingTablePreview": "维京桌预览",
+
+  // === 装饰·派对 FloorDecorationParty ===
+  "FloorDecorationParty:Blank": "空白派对位",
+  "FloorDecorationParty:BalloonFiveColor": "五色气球",
+  "FloorDecorationParty:BalloonTwoHeart": "爱心气球",
+  "FloorDecorationParty:BeachTowelStripe": "条纹沙滩巾",
+  "FloorDecorationParty:BeachUmbrellaStripe": "条纹遮阳伞",
+  "FloorDecorationParty:FlowerVasePink": "粉色花瓶",
+  "FloorDecorationParty:Presents": "礼物盒",
+  "FloorDecorationParty:Speaker": "音箱",
+  "FloorDecorationParty:WeddingArch": "婚礼拱门",
+  "FloorDecorationParty:WeddingCake": "婚礼蛋糕",
+
+  // === 装饰·主题 FloorDecorationThemed ===
+  "FloorDecorationThemed:Blank": "空白主题位",
+  "FloorDecorationThemed:BanzaiTree": "万岁树",
+  "FloorDecorationThemed:BondageClubBanner": "BC横幅",
+  "FloorDecorationThemed:Cabinet": "柜子",
+  "FloorDecorationThemed:ConsoleLeft": "左控制台",
+  "FloorDecorationThemed:ConsoleRight": "右控制台",
+  "FloorDecorationThemed:DeskBlue": "蓝色书桌",
+  "FloorDecorationThemed:DeskPurple": "紫色书桌",
+  "FloorDecorationThemed:IroningBoard": "熨衣板",
+  "FloorDecorationThemed:JapaneseTable": "日式矮桌",
+  "FloorDecorationThemed:KatanaOnStand": "武士刀架",
+  "FloorDecorationThemed:LaundryMachine": "洗衣机",
+  "FloorDecorationThemed:LongDeskLeft": "长桌左",
+  "FloorDecorationThemed:LongDeskRight": "长桌右",
+  "FloorDecorationThemed:MagicMark": "魔法印记",
+  "FloorDecorationThemed:MedicalDesk": "医疗桌",
+  "FloorDecorationThemed:ShibariFrame": "缚绳架",
+  "FloorDecorationThemed:SinkDishes": "水槽",
+  "FloorDecorationThemed:StandingBellflowerBanner": "风铃草旗",
+  "FloorDecorationThemed:StudentDesk": "学生课桌",
+  "FloorDecorationThemed:TeacherDesk": "教师讲台",
+  "FloorDecorationThemed:Television": "电视",
+  "FloorDecorationThemed:TelevisionBack": "电视背面",
+  "FloorDecorationThemed:Toilet": "马桶",
+  "FloorDecorationThemed:VoidOrderBanner": "虚空教团旗",
+  "FloorDecorationThemed:Wardrobe": "衣柜",
+
+  // === 障碍物 FloorObstacle ===
+  "FloorObstacle:Blank": "空白障碍位",
+  "FloorObstacle:Stalagmite": "石笋",
+  "FloorObstacle:Rocks": "岩石堆",
+  "FloorObstacle:GoldStones": "金石堆",
+  "FloorObstacle:StonePile": "石堆",
+  "FloorObstacle:Statue": "雕像",
+  "FloorObstacle:Knight": "骑士像",
+  "FloorObstacle:Samurai": "武士像",
+  "FloorObstacle:Totem": "图腾柱",
+  "FloorObstacle:EasterIsland": "复活节岛石像",
+  "FloorObstacle:OrderOfTheVoidTotem": "虚空教团图腾",
+  "FloorObstacle:Barrel": "木桶",
+  "FloorObstacle:Chest": "宝箱",
+  "FloorObstacle:IronBars": "铁栏杆",
+  "FloorObstacle:BarbFence": "刺网围栏",
+  "FloorObstacle:PicketFence": "尖桩篱笆",
+  "FloorObstacle:VelourRopeBarrier": "天鹅绒绳栏",
+  "FloorObstacle:Bush": "灌木丛",
+  "FloorObstacle:OakTree": "橡树",
+  "FloorObstacle:OakTree_Fall": "倒下的橡树",
+  "FloorObstacle:LeaflessTree": "枯树",
+  "FloorObstacle:PineTree": "松树",
+  "FloorObstacle:PalmTree": "棕榈树",
+  "FloorObstacle:Sakura": "樱花树",
+  "FloorObstacle:Cactus": "仙人掌",
+  "FloorObstacle:ChristmasTree": "圣诞树",
+  "FloorObstacle:Window": "窗户",
+  "FloorObstacle:TrashCan": "垃圾桶",
+  "FloorObstacle:RoadCone": "路锥",
+  "FloorObstacle:LampPost": "路灯",
+  "FloorObstacle:Pillar": "石柱",
+
+  // === 道具 FloorItem ===
+  "FloorItem:Blank": "空白道具位",
+  "FloorItem:BondageBench": "束缚长凳",
+  "FloorItem:Coffin": "棺材",
+  "FloorItem:FuturisticCrate": "未来箱",
+  "FloorItem:Kennel": "犬笼",
+  "FloorItem:Locker": "储物柜",
+  "FloorItem:MedicalBed": "医疗床",
+  "FloorItem:Pole": "立柱",
+  "FloorItem:TheDisplayFrame": "展示框",
+  "FloorItem:Trolley": "手推车",
+  "FloorItem:WoodenBox": "木箱",
+  "FloorItem:X-Cross": "十字架",
+
+  // === 字母/数字/图标 ===
+  "FloorLetter:Blank": "空白字母",
+  "FloorNumber:Blank": "空白数字",
+  "FloorIcon:Blank": "空白图标",
+  "FloorIcon:IconArrowDown": "↓箭头",
+  "FloorIcon:IconArrowLeft": "←箭头",
+  "FloorIcon:IconArrowRight": "→箭头",
+  "FloorIcon:IconArrowUp": "↑箭头",
+  "FloorIcon:IconCircle": "圆形",
+  "FloorIcon:IconCross": "叉号",
+  "FloorIcon:IconDiamond": "菱形",
+  "FloorIcon:IconSquare": "方形",
+  "FloorIcon:IconTriangle": "三角形",
+
+  // === 旗 Banners ===
+  "Banners:BellflowerBanner": "风铃草旗",
+  "Banners:Black": "黑色旗",
+  "Banners:Blue": "蓝色旗",
+  "Banners:BondageClub": "BC旗",
+  "Banners:Green": "绿色旗",
+  "Banners:Inquisition": "宗教裁判所旗",
+  "Banners:MagesSacrosanctorum": "圣法师旗",
+  "Banners:MaidSorority": "女仆会旗",
+  "Banners:PaladinBanner": "圣骑士旗",
+  "Banners:Priesthood": "祭司旗",
+  "Banners:Red": "红色旗",
+  "Banners:ServiOrdinisBanner": "秩序之仆旗",
+  "Banners:VoidOrder": "虚空教团旗",
+  "Banners:Yellow": "黄色旗",
+
+  // === 墙面装饰 WallDecoration ===
+  "WallDecoration:Blank": "空白墙面装饰",
+  "WallDecoration:AirConditioner": "墙面空调",
+  "WallDecoration:Bookshelf": "书架",
+  "WallDecoration:Candelabra0": "烛台",
+  "WallDecoration:CrossedSabers": "交叉佩刀",
+  "WallDecoration:EnemaHead": "灌肠器",
+  "WallDecoration:EyeTest": "视力表",
+  "WallDecoration:Fireplace": "壁炉",
+  "WallDecoration:FirstAidKit": "急救箱",
+  "WallDecoration:Mirror": "镜子",
+  "WallDecoration:MonitorBigLeft": "大屏左",
+  "WallDecoration:MonitorBigRight": "大屏右",
+  "WallDecoration:MonitorSmall": "小屏幕",
+  "WallDecoration:Moss": "苔藓",
+  "WallDecoration:Painting": "画作",
+  "WallDecoration:SchoolBoard": "学校公告板",
+  "WallDecoration:Scroll": "卷轴",
+  "WallDecoration:ShowerHead": "淋浴喷头",
+  "WallDecoration:SilverShield": "银盾牌",
+  "WallDecoration:StainedGlass": "彩色玻璃窗",
+  "WallDecoration:Stocking": "圣诞袜",
+  "WallDecoration:Vines": "藤蔓",
+  "WallDecoration:Vines2": "藤蔓2",
+  "WallDecoration:Wanted": "通缉令",
+  "WallDecoration:Whip": "鞭子",
+  "WallDecoration:Window": "窗户",
+  "WallDecoration:WindowNight": "夜间窗户",
+};
+</script>
+  <script>// BC room-map editor — i18n layer.
+// Locales follow the BC ecosystem convention: cn / tw / en / de / fr / ru / ua (+ auto).
+// UI strings are fully translated; component (asset) names use Chinese labels for
+// cn/tw and fall back to the BC English `style` name for every other locale
+// (the asset images themselves are language-neutral).
+(function () {
+  "use strict";
+
+  // Display name of each locale (shown in the language <select>).
+  const LOCALE_NAMES = {
+    cn: "简体中文", tw: "繁體中文", en: "English",
+    de: "Deutsch", fr: "Français", ru: "Русский", ua: "Українська",
+    auto: "自动 (Auto)",
+  };
+
+  const DICT = {
+    cn: {
+      "app.title": "BC 地图编辑器",
+      "app.subtitle": "生成可直接 /mappaste 的数据串 · 40×40 网格",
+      "mode.label": "模式",
+      "mode.always": "始终可见",
+      "mode.online": "仅在线可见",
+      "mode.offline": "仅离线可见",
+      "fog": "迷雾",
+      "undo": "↶ 撤销",
+      "redo": "↷ 重做",
+      "fillFloor": "铺地板",
+      "clear": "清空",
+      "example": "示例",
+      "genCode": "生成代码",
+      "importFile": "导入文件",
+      "exportFile": "导出文件",
+      "layer.tiles": "地板/墙体层",
+      "layer.objects": "物件层",
+      "search.ph": "搜索部件（名称/类型/编号）…",
+      "panel.title": "mappaste 数据串",
+      "output.ph": "点「生成代码」自动填入，或直接粘贴已有的 mappaste 串",
+      "copy": "复制",
+      "hint.import": "粘贴串到文本框后按 Ctrl+V 即可自动识别并加载地图。把最终串贴进游戏聊天框输入 /mappaste <串> 即可铺设。注意：灯光/染色特效（Effects）不在 mappaste 串内，需游戏内另设。",
+      "cat.floor": "地板",
+      "cat.wall": "墙",
+      "cat.exterior": "室外地面",
+      "cat.water": "水域",
+      "cat.door": "门",
+      "cat.key": "钥匙",
+      "cat.obstacle": "障碍",
+      "cat.decoration": "装饰",
+      "cat.marker": "标记",
+      "cat.item": "道具",
+      "cat.banners": "旗",
+      "cat.walldeco": "墙面装饰",
+      "cat.other": "其他",
+      "pal.empty": "无匹配部件",
+      "tool.brush": "笔刷",
+      "tool.rect": "矩形",
+      "tool.line": "直线",
+      "tool.fill": "填充",
+      "tool.eraser": "橡皮擦",
+      "tool.brush.title": "笔刷 (B)",
+      "tool.rect.title": "矩形 (R)",
+      "tool.line.title": "直线 (L)",
+      "tool.fill.title": "填充 (F)",
+      "tool.eraser.title": "橡皮擦 (E)",
+      "info.prefix": "工具：",
+      "info.eraser": "· 橡皮擦",
+      "info.brush": "· 笔刷：",
+      "info.to": " → ",
+      "info.notSelected": "· 未选部件（点左侧面板）",
+      "flash.undo": "已撤销",
+      "flash.redo": "已重做",
+      "flash.exportedFile": "已导出文件",
+      "flash.loaded": "已加载",
+      "flash.loadFail": "加载失败：",
+      "flash.copied": "已复制到剪贴板",
+      "flash.copiedCompat": "已复制（兼容模式）",
+      "flash.filled": "已铺满：",
+      "oak": "橡木地板",
+      "flash.cleared": "已清空",
+      "ready": "就绪",
+      "stats.tiles": "非地板格:",
+      "stats.objs": "非空白物件:",
+      "stats.len": "串长:",
+      "stats.valid": "有效",
+      "stats.invalid": "无效",
+      "badge.bronze": "铜",
+      "badge.silver": "银",
+      "badge.gold": "金",
+      "lang.label": "语言",
+      "zoom.fit": "适应",
+      "zoom.fit.title": "适应窗口",
+      "stage.hint": "左键绘制 · 右键擦除（当前层）· 拖动连续刷 · 快捷键 B笔刷 / R矩形 / L直线 / F填充 / E橡皮擦 · Ctrl+Z 撤销 · Ctrl+Y 重做 · 空格+拖动 或 中键拖动 平移地图",
+    },
+    tw: {
+      "app.title": "BC 地圖編輯器",
+      "app.subtitle": "生成可直接 /mappaste 的資料串 · 40×40 網格",
+      "mode.label": "模式",
+      "mode.always": "始終可見",
+      "mode.online": "僅線上可見",
+      "mode.offline": "僅離線可見",
+      "fog": "迷霧",
+      "undo": "↶ 撤銷",
+      "redo": "↷ 重做",
+      "fillFloor": "鋪地板",
+      "clear": "清空",
+      "example": "範例",
+      "genCode": "生成代碼",
+      "importFile": "匯入檔案",
+      "exportFile": "匯出檔案",
+      "layer.tiles": "地板/牆體層",
+      "layer.objects": "物件層",
+      "search.ph": "搜尋部件（名稱/類型/編號）…",
+      "panel.title": "mappaste 資料串",
+      "output.ph": "點「生成代碼」自動填入，或直接貼上已有的 mappaste 串",
+      "copy": "複製",
+      "hint.import": "在文字框內按 Ctrl+V 貼上資料串即可自動辨識並載入地圖。把最終資料串貼進遊戲聊天框輸入 /mappaste <串> 即可鋪設。注意：燈光/染色特效（Effects）不在 mappaste 串內，需遊戲內另設。",
+      "cat.floor": "地板",
+      "cat.wall": "牆",
+      "cat.exterior": "室外地面",
+      "cat.water": "水域",
+      "cat.door": "門",
+      "cat.key": "鑰匙",
+      "cat.obstacle": "障礙",
+      "cat.decoration": "裝飾",
+      "cat.marker": "標記",
+      "cat.item": "道具",
+      "cat.banners": "旗",
+      "cat.walldeco": "牆面裝飾",
+      "cat.other": "其他",
+      "pal.empty": "無匹配部件",
+      "tool.brush": "筆刷",
+      "tool.rect": "矩形",
+      "tool.line": "直線",
+      "tool.fill": "填充",
+      "tool.eraser": "橡皮擦",
+      "tool.brush.title": "筆刷 (B)",
+      "tool.rect.title": "矩形 (R)",
+      "tool.line.title": "直線 (L)",
+      "tool.fill.title": "填充 (F)",
+      "tool.eraser.title": "橡皮擦 (E)",
+      "info.prefix": "工具：",
+      "info.eraser": "· 橡皮擦",
+      "info.brush": "· 筆刷：",
+      "info.to": " → ",
+      "info.notSelected": "· 未選部件（點左側面板）",
+      "flash.undo": "已撤銷",
+      "flash.redo": "已重做",
+      "flash.exportedFile": "已匯出檔案",
+      "flash.loaded": "已載入",
+      "flash.loadFail": "載入失敗：",
+      "flash.copied": "已複製到剪貼簿",
+      "flash.copiedCompat": "已複製（相容模式）",
+      "flash.filled": "已鋪滿：",
+      "oak": "橡木地板",
+      "flash.cleared": "已清空",
+      "ready": "就緒",
+      "stats.tiles": "非地板格:",
+      "stats.objs": "非空白物件:",
+      "stats.len": "串長:",
+      "stats.valid": "有效",
+      "stats.invalid": "無效",
+      "badge.bronze": "銅",
+      "badge.silver": "銀",
+      "badge.gold": "金",
+      "lang.label": "語言",
+      "zoom.fit": "適應",
+      "zoom.fit.title": "適應視窗",
+      "stage.hint": "左鍵繪製 · 右鍵擦除（目前層）· 拖動連續刷 · 快捷鍵 B筆刷 / R矩形 / L直線 / F填充 / E橡皮擦 · Ctrl+Z 撤銷 · Ctrl+Y 重做 · 空格+拖動 或 中鍵拖動 平移地圖",
+    },
+    en: {
+      "app.title": "BC Map Editor",
+      "app.subtitle": "Generate a /mappaste data string · 40×40 grid",
+      "mode.label": "Mode",
+      "mode.always": "Always visible",
+      "mode.online": "Online only",
+      "mode.offline": "Offline only",
+      "fog": "Fog",
+      "undo": "↶ Undo",
+      "redo": "↷ Redo",
+      "fillFloor": "Fill floor",
+      "clear": "Clear",
+      "example": "Example",
+      "genCode": "Generate code",
+      "importFile": "Import file",
+      "exportFile": "Export file",
+      "layer.tiles": "Floor/Wall layer",
+      "layer.objects": "Objects layer",
+      "search.ph": "Search parts (name/type/id)…",
+      "panel.title": "mappaste data string",
+      "output.ph": "Click 'Generate code' to fill, or paste an existing mappaste string",
+      "copy": "Copy",
+      "hint.import": "Paste a string into the box and press Ctrl+V to auto-detect and load the map. Paste the final string into the game chat as /mappaste <string> to lay it. Note: light/tint Effects are not part of the mappaste string and must be set in-game.",
+      "cat.floor": "Floor",
+      "cat.wall": "Wall",
+      "cat.exterior": "Outdoor",
+      "cat.water": "Water",
+      "cat.door": "Door",
+      "cat.key": "Key",
+      "cat.obstacle": "Obstacle",
+      "cat.decoration": "Decoration",
+      "cat.marker": "Marker",
+      "cat.item": "Item",
+      "cat.banners": "Banners",
+      "cat.walldeco": "Wall decor",
+      "cat.other": "Other",
+      "pal.empty": "No matching parts",
+      "tool.brush": "Brush",
+      "tool.rect": "Rectangle",
+      "tool.line": "Line",
+      "tool.fill": "Fill",
+      "tool.eraser": "Eraser",
+      "tool.brush.title": "Brush (B)",
+      "tool.rect.title": "Rectangle (R)",
+      "tool.line.title": "Line (L)",
+      "tool.fill.title": "Fill (F)",
+      "tool.eraser.title": "Eraser (E)",
+      "info.prefix": "Tool: ",
+      "info.eraser": "· Eraser",
+      "info.brush": "· Brush: ",
+      "info.to": " → ",
+      "info.notSelected": "· No part selected (click left panel)",
+      "flash.undo": "Undone",
+      "flash.redo": "Redone",
+      "flash.exportedFile": "File exported",
+      "flash.loaded": "Loaded",
+      "flash.loadFail": "Load failed: ",
+      "flash.copied": "Copied to clipboard",
+      "flash.copiedCompat": "Copied (compatibility)",
+      "flash.filled": "Filled: ",
+      "oak": "Oak wood",
+      "flash.cleared": "Cleared",
+      "ready": "Ready",
+      "stats.tiles": "Non-floor tiles:",
+      "stats.objs": "Non-empty objects:",
+      "stats.len": "Length:",
+      "stats.valid": "Valid",
+      "stats.invalid": "Invalid",
+      "badge.bronze": "B",
+      "badge.silver": "S",
+      "badge.gold": "G",
+      "lang.label": "Language",
+      "zoom.fit": "Fit",
+      "zoom.fit.title": "Fit to window",
+      "stage.hint": "Left-click to draw · Right-click to erase (current layer) · Drag for continuous strokes · Shortcuts B Brush / R Rectangle / L Line / F Fill / E Eraser · Ctrl+Z Undo · Ctrl+Y Redo · Space+drag or middle-click drag to pan",
+    },
+    de: {
+      "app.title": "BC Karteneditor",
+      "app.subtitle": "Erzeuge einen /mappaste-Datenstring · 40×40 Raster",
+      "mode.label": "Modus",
+      "mode.always": "Immer sichtbar",
+      "mode.online": "Nur online",
+      "mode.offline": "Nur offline",
+      "fog": "Nebel",
+      "undo": "↶ Rückgängig",
+      "redo": "↷ Wiederholen",
+      "fillFloor": "Boden füllen",
+      "clear": "Leeren",
+      "example": "Beispiel",
+      "genCode": "Code erzeugen",
+      "importFile": "Datei importieren",
+      "exportFile": "Datei exportieren",
+      "layer.tiles": "Boden/Wand-Ebene",
+      "layer.objects": "Objekt-Ebene",
+      "search.ph": "Teile suchen (Name/Typ/ID)…",
+      "panel.title": "mappaste-Datenstring",
+      "output.ph": "Auf 'Code erzeugen' klicken zum Füllen, oder einen vorhandenen mappaste-String einfügen",
+      "copy": "Kopieren",
+      "hint.import": "Einen String in das Feld einfügen und Strg+V drücken, um die Karte automatisch zu erkennen und zu laden. Den finalen String im Spielchat als /mappaste <string> einfügen. Hinweis: Licht/Farb-Effekte sind nicht Teil des mappaste-Strings und müssen im Spiel gesetzt werden.",
+      "cat.floor": "Boden",
+      "cat.wall": "Wand",
+      "cat.exterior": "Außen",
+      "cat.water": "Wasser",
+      "cat.door": "Tür",
+      "cat.key": "Schlüssel",
+      "cat.obstacle": "Hindernis",
+      "cat.decoration": "Dekoration",
+      "cat.marker": "Markierung",
+      "cat.item": "Objekt",
+      "cat.banners": "Banner",
+      "cat.walldeco": "Wanddeko",
+      "cat.other": "Sonstiges",
+      "pal.empty": "Keine passenden Teile",
+      "tool.brush": "Pinsel",
+      "tool.rect": "Rechteck",
+      "tool.line": "Linie",
+      "tool.fill": "Füllen",
+      "tool.eraser": "Radiergummi",
+      "tool.brush.title": "Pinsel (B)",
+      "tool.rect.title": "Rechteck (R)",
+      "tool.line.title": "Linie (L)",
+      "tool.fill.title": "Füllen (F)",
+      "tool.eraser.title": "Radiergummi (E)",
+      "info.prefix": "Werkzeug: ",
+      "info.eraser": "· Radiergummi",
+      "info.brush": "· Pinsel: ",
+      "info.to": " → ",
+      "info.notSelected": "· Kein Teil gewählt (linke Leiste anklicken)",
+      "flash.undo": "Rückgängig",
+      "flash.redo": "Wiederholt",
+      "flash.exportedFile": "Datei exportiert",
+      "flash.loaded": "Geladen",
+      "flash.loadFail": "Laden fehlgeschlagen: ",
+      "flash.copied": "In Zwischenablage kopiert",
+      "flash.copiedCompat": "Kopiert (Kompatibilität)",
+      "flash.filled": "Gefüllt: ",
+      "oak": "Eichenholz",
+      "flash.cleared": "Geleert",
+      "ready": "Bereit",
+      "stats.tiles": "Nicht-Boden-Felder:",
+      "stats.objs": "Nicht-leere Objekte:",
+      "stats.len": "Länge:",
+      "stats.valid": "Gültig",
+      "stats.invalid": "Ungültig",
+      "badge.bronze": "B",
+      "badge.silver": "S",
+      "badge.gold": "G",
+      "lang.label": "Sprache",
+      "zoom.fit": "Passen",
+      "zoom.fit.title": "An Fenster anpassen",
+      "stage.hint": "Linksklick zum Zeichnen · Rechtsklick zum Radieren (aktuelle Ebene) · Ziehen für durchgehende Striche · Tasten B Pinsel / R Rechteck / L Linie / F Füllen / E Radiergummi · Strg+Z Rückgängig · Strg+Y Wiederholen · Leertaste+Ziehen oder Mittelklick-Ziehen zum Verschieben",
+    },
+    fr: {
+      "app.title": "Éditeur de carte BC",
+      "app.subtitle": "Génère une chaîne /mappaste · grille 40×40",
+      "mode.label": "Mode",
+      "mode.always": "Toujours visible",
+      "mode.online": "En ligne uniquement",
+      "mode.offline": "Hors ligne uniquement",
+      "fog": "Brouillard",
+      "undo": "↶ Annuler",
+      "redo": "↷ Rétablir",
+      "fillFloor": "Remplir le sol",
+      "clear": "Effacer",
+      "example": "Exemple",
+      "genCode": "Générer le code",
+      "importFile": "Importer un fichier",
+      "exportFile": "Exporter un fichier",
+      "layer.tiles": "Calque sol/mur",
+      "layer.objects": "Calque objets",
+      "search.ph": "Rechercher des pièces (nom/type/id)…",
+      "panel.title": "Chaîne mappaste",
+      "output.ph": "Cliquez sur 'Générer le code' pour remplir, ou collez une chaîne mappaste existante",
+      "copy": "Copier",
+      "hint.import": "Collez une chaîne dans le champ et appuyez sur Ctrl+V pour la détecter et charger la carte automatiquement. Collez la chaîne finale dans le chat du jeu via /mappaste <chaîne> pour la poser. Note : les effets de lumière/teinte ne font pas partie de la chaîne mappaste et doivent être réglés en jeu.",
+      "cat.floor": "Sol",
+      "cat.wall": "Mur",
+      "cat.exterior": "Extérieur",
+      "cat.water": "Eau",
+      "cat.door": "Porte",
+      "cat.key": "Clé",
+      "cat.obstacle": "Obstacle",
+      "cat.decoration": "Décoration",
+      "cat.marker": "Marqueur",
+      "cat.item": "Objet",
+      "cat.banners": "Bannières",
+      "cat.walldeco": "Déco murale",
+      "cat.other": "Autre",
+      "pal.empty": "Aucune pièce correspondante",
+      "tool.brush": "Pinceau",
+      "tool.rect": "Rectangle",
+      "tool.line": "Ligne",
+      "tool.fill": "Remplir",
+      "tool.eraser": "Gomme",
+      "tool.brush.title": "Pinceau (B)",
+      "tool.rect.title": "Rectangle (R)",
+      "tool.line.title": "Ligne (L)",
+      "tool.fill.title": "Remplir (F)",
+      "tool.eraser.title": "Gomme (E)",
+      "info.prefix": "Outil : ",
+      "info.eraser": "· Gomme",
+      "info.brush": "· Pinceau : ",
+      "info.to": " → ",
+      "info.notSelected": "· Aucune pièce sélectionnée (cliquez le panneau gauche)",
+      "flash.undo": "Annulé",
+      "flash.redo": "Rétabli",
+      "flash.exportedFile": "Fichier exporté",
+      "flash.loaded": "Chargé",
+      "flash.loadFail": "Échec du chargement : ",
+      "flash.copied": "Copié dans le presse-papiers",
+      "flash.copiedCompat": "Copié (compatibilité)",
+      "flash.filled": "Rempli : ",
+      "oak": "Bois de chêne",
+      "flash.cleared": "Effacé",
+      "ready": "Prêt",
+      "stats.tiles": "Tuiles non-sol :",
+      "stats.objs": "Objets non vides :",
+      "stats.len": "Longueur :",
+      "stats.valid": "Valide",
+      "stats.invalid": "Invalide",
+      "badge.bronze": "B",
+      "badge.silver": "S",
+      "badge.gold": "G",
+      "lang.label": "Langue",
+      "zoom.fit": "Ajuster",
+      "zoom.fit.title": "Ajuster à la fenêtre",
+      "stage.hint": "Clic gauche pour dessiner · Clic droit pour effacer (calque actuel) · Glisser pour un tracé continu · Raccourcis B Pinceau / R Rectangle / L Ligne / F Remplir / E Gomme · Ctrl+Z Annuler · Ctrl+Y Rétablir · Espace+glisser ou clic-milieu pour déplacer",
+    },
+    ru: {
+      "app.title": "Редактор карт BC",
+      "app.subtitle": "Создать строку /mappaste · сетка 40×40",
+      "mode.label": "Режим",
+      "mode.always": "Всегда видимо",
+      "mode.online": "Только онлайн",
+      "mode.offline": "Только офлайн",
+      "fog": "Туман",
+      "undo": "↶ Отмена",
+      "redo": "↷ Повтор",
+      "fillFloor": "Залить пол",
+      "clear": "Очистить",
+      "example": "Пример",
+      "genCode": "Создать код",
+      "importFile": "Импорт файла",
+      "exportFile": "Экспорт файла",
+      "layer.tiles": "Слой пола/стены",
+      "layer.objects": "Слой объектов",
+      "search.ph": "Поиск деталей (имя/тип/id)…",
+      "panel.title": "Строка mappaste",
+      "output.ph": "Нажмите 'Создать код' для заполнения или вставьте существующую строку mappaste",
+      "copy": "Копировать",
+      "hint.import": "Вставьте строку в поле и нажмите Ctrl+V, чтобы автоматически распознать и загрузить карту. Вставьте итоговую строку в чат игры как /mappaste <строка> для укладки. Примечание: эффекты света/окраски не входят в строку mappaste и задаются в игре.",
+      "cat.floor": "Пол",
+      "cat.wall": "Стена",
+      "cat.exterior": "Снаружи",
+      "cat.water": "Вода",
+      "cat.door": "Дверь",
+      "cat.key": "Ключ",
+      "cat.obstacle": "Препятствие",
+      "cat.decoration": "Декор",
+      "cat.marker": "Метка",
+      "cat.item": "Предмет",
+      "cat.banners": "Флажки",
+      "cat.walldeco": "Декор стены",
+      "cat.other": "Прочее",
+      "pal.empty": "Нет подходящих деталей",
+      "tool.brush": "Кисть",
+      "tool.rect": "Прямоугольник",
+      "tool.line": "Линия",
+      "tool.fill": "Заливка",
+      "tool.eraser": "Ластик",
+      "tool.brush.title": "Кисть (B)",
+      "tool.rect.title": "Прямоугольник (R)",
+      "tool.line.title": "Линия (L)",
+      "tool.fill.title": "Заливка (F)",
+      "tool.eraser.title": "Ластик (E)",
+      "info.prefix": "Инструмент: ",
+      "info.eraser": "· Ластик",
+      "info.brush": "· Кисть: ",
+      "info.to": " → ",
+      "info.notSelected": "· Деталь не выбрана (кликните левую панель)",
+      "flash.undo": "Отменено",
+      "flash.redo": "Повторено",
+      "flash.exportedFile": "Файл экспортирован",
+      "flash.loaded": "Загружено",
+      "flash.loadFail": "Ошибка загрузки: ",
+      "flash.copied": "Скопировано в буфер",
+      "flash.copiedCompat": "Скопировано (совместимость)",
+      "flash.filled": "Залито: ",
+      "oak": "Дуб",
+      "flash.cleared": "Очищено",
+      "ready": "Готово",
+      "stats.tiles": "Не пол:",
+      "stats.objs": "Не пустых объектов:",
+      "stats.len": "Длина:",
+      "stats.valid": "Действителен",
+      "stats.invalid": "Недействителен",
+      "badge.bronze": "Б",
+      "badge.silver": "С",
+      "badge.gold": "З",
+      "lang.label": "Язык",
+      "zoom.fit": "Вписать",
+      "zoom.fit.title": "Вписать в окно",
+      "stage.hint": "Левый клик — рисовать · Правый клик — стереть (текущий слой) · Перетаскивание — непрерывные мазки · Клавиши B Кисть / R Прямоугольник / L Линия / F Заливка / E Ластик · Ctrl+Z Отмена · Ctrl+Y Повтор · Пробел+перетаскивание или средняя кнопка мыши для перемещения",
+    },
+    ua: {
+      "app.title": "Редактор карти BC",
+      "app.subtitle": "Створити рядок /mappaste · сітка 40×40",
+      "mode.label": "Режим",
+      "mode.always": "Завжди видимо",
+      "mode.online": "Тільки онлайн",
+      "mode.offline": "Тільки офлайн",
+      "fog": "Туман",
+      "undo": "↶ Скасувати",
+      "redo": "↷ Повторити",
+      "fillFloor": "Залити підлогу",
+      "clear": "Очистити",
+      "example": "Приклад",
+      "genCode": "Створити код",
+      "importFile": "Імпорт файлу",
+      "exportFile": "Експорт файлу",
+      "layer.tiles": "Шар підлоги/стіни",
+      "layer.objects": "Шар об'єктів",
+      "search.ph": "Пошук деталей (ім'я/тип/id)…",
+      "panel.title": "Рядок mappaste",
+      "output.ph": "Натисніть 'Створити код' для заповнення або вставте наявний рядок mappaste",
+      "copy": "Копіювати",
+      "hint.import": "Вставте рядок у поле й натисніть Ctrl+V, щоб автоматично розпізнати й завантажити карту. Вставте фінальний рядок у чат гри як /mappaste <рядок> для укладання. Примітка: ефекти світла/відтінку не входять у рядок mappaste й задаються в грі.",
+      "cat.floor": "Підлога",
+      "cat.wall": "Стіна",
+      "cat.exterior": "Зовні",
+      "cat.water": "Вода",
+      "cat.door": "Двері",
+      "cat.key": "Ключ",
+      "cat.obstacle": "Перешкода",
+      "cat.decoration": "Декор",
+      "cat.marker": "Мітка",
+      "cat.item": "Предмет",
+      "cat.banners": "Прапори",
+      "cat.walldeco": "Декор стіни",
+      "cat.other": "Інше",
+      "pal.empty": "Немає відповідних деталей",
+      "tool.brush": "Пензель",
+      "tool.rect": "Прямокутник",
+      "tool.line": "Лінія",
+      "tool.fill": "Заливка",
+      "tool.eraser": "Гумка",
+      "tool.brush.title": "Пензель (B)",
+      "tool.rect.title": "Прямокутник (R)",
+      "tool.line.title": "Лінія (L)",
+      "tool.fill.title": "Заливка (F)",
+      "tool.eraser.title": "Гумка (E)",
+      "info.prefix": "Інструмент: ",
+      "info.eraser": "· Гумка",
+      "info.brush": "· Пензель: ",
+      "info.to": " → ",
+      "info.notSelected": "· Деталь не вибрано (клікніть ліву панель)",
+      "flash.undo": "Скасовано",
+      "flash.redo": "Повторено",
+      "flash.exportedFile": "Файл експортовано",
+      "flash.loaded": "Завантажено",
+      "flash.loadFail": "Помилка завантаження: ",
+      "flash.copied": "Скопійовано в буфер",
+      "flash.copiedCompat": "Скопійовано (сумісність)",
+      "flash.filled": "Залито: ",
+      "oak": "Дуб",
+      "flash.cleared": "Очищено",
+      "ready": "Готово",
+      "stats.tiles": "Не підлога:",
+      "stats.objs": "Не порожніх об'єктів:",
+      "stats.len": "Довжина:",
+      "stats.valid": "Дійсний",
+      "stats.invalid": "Недійсний",
+      "badge.bronze": "Б",
+      "badge.silver": "С",
+      "badge.gold": "З",
+      "lang.label": "Мова",
+      "zoom.fit": "Вписати",
+      "zoom.fit.title": "Вписати у вікно",
+      "stage.hint": "Лівий клік — малювати · Правий клік — стерти (поточний шар) · Перетягування — неперервні мазки · Клавіші B Пензель / R Прямокутник / L Лінія / F Заливка / E Гумка · Ctrl+Z Скасувати · Ctrl+Y Повторити · Пробіл+перетягування або середня кнопка миші для переміщення",
+    },
+  };
+
+  const FALLBACK = "en";
+  let current = "cn";
+
+  // Resolve initial locale: explicit saved > browser language > cn.
+  function detectBrowser() {
+    const nav = (typeof navigator !== "undefined" && navigator.language) || "en";
+    const base = nav.slice(0, 2).toLowerCase();
+    if (DICT[base]) return base;
+    return "cn";
+  }
+  try {
+    const saved = localStorage.getItem("bc-map-locale");
+    if (saved === "auto") current = detectBrowser();
+    else if (saved && DICT[saved]) current = saved;
+    else current = detectBrowser();
+  } catch (e) { current = detectBrowser(); }
+
+  function t(key, vars) {
+    const table = DICT[current] || DICT[FALLBACK];
+    let str = (table && table[key] != null) ? table[key]
+      : (DICT[FALLBACK][key] != null) ? DICT[FALLBACK][key]
+      : (DICT.cn[key] != null) ? DICT.cn[key]
+      : key;
+    if (vars) for (const k in vars) str = str.replace(new RegExp("\\{" + k + "\\}", "g"), vars[k]);
+    return str;
+  }
+  function setLocale(loc) {
+    let target = loc;
+    if (loc === "auto") target = detectBrowser();
+    if (!DICT[target]) target = FALLBACK;
+    current = target;
+    try { localStorage.setItem("bc-map-locale", loc); } catch (e) {}
+    if (typeof document !== "undefined") {
+      document.documentElement.lang = (current === "cn" || current === "tw") ? "zh" : current;
+      document.dispatchEvent(new CustomEvent("localechange"));
+    }
+  }
+  function getLocale() { return current; }
+  function getSavedLocale() {
+    try { return localStorage.getItem("bc-map-locale") || "auto"; } catch (e) { return "auto"; }
+  }
+  function available() { return Object.keys(DICT); }
+  function localeName(loc) { return LOCALE_NAMES[loc] || loc; }
+
+  // Localized label for a catalog component.
+  // cn/tw use the Chinese zh-label; every other locale falls back to the BC
+  // English `style` name (asset images are language-neutral).
+  const ZH = (typeof window !== "undefined" && window.MAP_ZH_LABELS) || {};
+  function labelForComp(comp) {
+    const key = (comp.type || "") + ":" + (comp.style || "");
+    if (current === "cn" || current === "tw") return ZH[key] || comp.style || "?";
+    return comp.style || "?";
+  }
+
+  window.MAP_I18N = { t, setLocale, getLocale, getSavedLocale, available, localeName, labelForComp, LOCALE_NAMES };
+})();
+</script>
+  <script>window.MAP_IMAGES = {"Floor:OakWood":"assets/MapTile/Floor/OakWood.png","Floor:Stone":"assets/MapTile/Floor/Stone.png","Floor:Pavement":"assets/MapTile/Floor/Pavement.png","Floor:Ceramic":"assets/MapTile/Floor/Ceramic.png","Floor:CeramicDark":"assets/MapTile/Floor/CeramicDark.png","Floor:CarpetPink":"assets/MapTile/Floor/CarpetPink.png","Floor:CarpetBlue":"assets/MapTile/Floor/CarpetBlue.png","Floor:CarpetRed":"assets/MapTile/Floor/CarpetRed.png","Floor:Padded":"assets/MapTile/Floor/Padded.png","Floor:LatexFloor":"assets/MapTile/Floor/LatexFloor.png","Floor:Tile":"assets/MapTile/Floor/Tile.png","Floor:HexBlue":"assets/MapTile/Floor/HexBlue.png","Floor:HexPurple":"assets/MapTile/Floor/HexPurple.png","Floor:Machine":"assets/MapTile/Floor/Machine.png","Floor:HalfWall":"assets/MapTile/Floor/HalfWall.png","FloorExterior:Dirt":"assets/MapTile/FloorExterior/Dirt.png","FloorExterior:Grass":"assets/MapTile/FloorExterior/Grass.png","FloorExterior:LongGrass":"assets/MapTile/FloorExterior/LongGrass.png","FloorExterior:Sand":"assets/MapTile/FloorExterior/Sand.png","FloorExterior:Gravel":"assets/MapTile/FloorExterior/Gravel.png","FloorExterior:Asphalt":"assets/MapTile/FloorExterior/Asphalt.png","FloorExterior:Snow":"assets/MapTile/FloorExterior/Snow.png","FloorExterior:StoneSquareGray":"assets/MapTile/FloorExterior/StoneSquareGray.png","FloorExterior:ScatteredLeaves":"assets/MapTile/FloorExterior/ScatteredLeaves.png","FloorExterior:ScatteredLeavesDirt":"assets/MapTile/FloorExterior/ScatteredLeavesDirt.png","FloorExterior:ScatteredLeavesThick":"assets/MapTile/FloorExterior/ScatteredLeavesThick.png","Wall:MixedWood":"assets/MapTile/Wall/MixedWood.png","Wall:CedarWood":"assets/MapTile/Wall/CedarWood.png","Wall:Log":"assets/MapTile/Wall/Log.png","Wall:Japanese":"assets/MapTile/Wall/Japanese.png","Wall:Stone":"assets/MapTile/Wall/Stone.png","Wall:Brick":"assets/MapTile/Wall/Brick.png","Wall:Dungeon":"assets/MapTile/Wall/Dungeon.png","Wall:Square":"assets/MapTile/Wall/Square.png","Wall:Steel":"assets/MapTile/Wall/Steel.png","Wall:Padded":"assets/MapTile/Wall/Padded.png","Wall:Tile":"assets/MapTile/Wall/Tile.png","Wall:Lattice":"assets/MapTile/Wall/Lattice.png","Wall:HexBlue":"assets/MapTile/Wall/HexBlue.png","Wall:HexPurple":"assets/MapTile/Wall/HexPurple.png","Wall:PipeBlue":"assets/MapTile/Wall/PipeBlue.png","Wall:PipePurple":"assets/MapTile/Wall/PipePurple.png","Wall:SteelBlack":"assets/MapTile/Wall/SteelBlack.png","Wall:SteelGary":"assets/MapTile/Wall/SteelGary.png","Water:Pool":"assets/MapTile/Water/Pool.png","Water:Sea":"assets/MapTile/Water/Sea.png","Water:Ocean":"assets/MapTile/Water/Ocean.png","Water:OceanCyan":"assets/MapTile/Water/OceanCyan.png","Water:OceanCalm":"assets/MapTile/Water/OceanCalm.png","Water:Swamp":"assets/MapTile/Water/Swamp.png","Water:Waves":"assets/MapTile/Water/Waves.png","Water:Shallow":"assets/MapTile/Water/Shallow.png","Water:Lava":"assets/MapTile/Water/Lava.png","FloorDecoration:EntryFlag":"assets/MapObject/FloorDecoration/EntryFlag.png","FloorDecoration:ExitFlag":"assets/MapObject/FloorDecoration/ExitFlag.png","FloorDecoration:BedTeal":"assets/MapObject/FloorDecoration/BedTeal.png","FloorDecoration:PillowPink":"assets/MapObject/FloorDecoration/PillowPink.png","FloorDecoration:TableBrown":"assets/MapObject/FloorDecoration/TableBrown.png","FloorDecoration:ChairWood":"assets/MapObject/FloorDecoration/ChairWood.png","FloorDecoration:ThroneRed":"assets/MapObject/FloorDecoration/ThroneRed.png","FloorDecoration:KeyBronze":"assets/MapObject/FloorDecoration/KeyBronze.png","FloorDecoration:KeySilver":"assets/MapObject/FloorDecoration/KeySilver.png","FloorDecoration:KeyGold":"assets/MapObject/FloorDecoration/KeyGold.png","FloorDecoration:VikingChair":"assets/MapObject/FloorDecoration/VikingChair.png","FloorDecoration:Bed":"assets/MapObject/FloorDecoration/Bed.png","FloorDecoration:Stairs":"assets/MapObject/FloorDecoration/Stairs.png","FloorDecoration:AirConditioner":"assets/MapObject/FloorDecoration/AirConditioner.png","FloorDecorationThemed:TeacherDesk":"assets/MapObject/FloorDecorationThemed/TeacherDesk.png","FloorDecorationThemed:StudentDesk":"assets/MapObject/FloorDecorationThemed/StudentDesk.png","FloorDecorationThemed:SinkDishes":"assets/MapObject/FloorDecorationThemed/SinkDishes.png","FloorDecorationThemed:LaundryMachine":"assets/MapObject/FloorDecorationThemed/LaundryMachine.png","FloorDecorationThemed:IroningBoard":"assets/MapObject/FloorDecorationThemed/IroningBoard.png","FloorDecorationThemed:ShibariFrame":"assets/MapObject/FloorDecorationThemed/ShibariFrame.png","FloorDecorationThemed:JapaneseTable":"assets/MapObject/FloorDecorationThemed/JapaneseTable.png","FloorDecorationThemed:BanzaiTree":"assets/MapObject/FloorDecorationThemed/BanzaiTree.png","FloorDecorationThemed:MedicalDesk":"assets/MapObject/FloorDecorationThemed/MedicalDesk.png","FloorDecorationThemed:Toilet":"assets/MapObject/FloorDecorationThemed/Toilet.png","FloorDecorationThemed:DeskBlue":"assets/MapObject/FloorDecorationThemed/DeskBlue.png","FloorDecorationThemed:DeskPurple":"assets/MapObject/FloorDecorationThemed/DeskPurple.png","FloorDecorationThemed:ConsoleLeft":"assets/MapObject/FloorDecorationThemed/ConsoleLeft.png","FloorDecorationThemed:ConsoleRight":"assets/MapObject/FloorDecorationThemed/ConsoleRight.png","FloorDecorationThemed:LongDeskLeft":"assets/MapObject/FloorDecorationThemed/LongDeskLeft.png","FloorDecorationThemed:LongDeskRight":"assets/MapObject/FloorDecorationThemed/LongDeskRight.png","FloorDecorationThemed:Cabinet":"assets/MapObject/FloorDecorationThemed/Cabinet.png","FloorDecorationThemed:Television":"assets/MapObject/FloorDecorationThemed/Television.png","FloorDecorationThemed:TelevisionBack":"assets/MapObject/FloorDecorationThemed/TelevisionBack.png","FloorDecorationThemed:Wardrobe":"assets/MapObject/FloorDecorationThemed/Wardrobe.png","FloorDecorationThemed:StandingBellflowerBanner":"assets/MapObject/FloorDecorationThemed/StandingBellflowerBanner.png","FloorDecorationThemed:BondageClubBanner":"assets/MapObject/FloorDecorationThemed/BondageClubBanner.png","FloorDecorationThemed:VoidOrderBanner":"assets/MapObject/FloorDecorationThemed/VoidOrderBanner.png","FloorDecorationThemed:KatanaOnStand":"assets/MapObject/FloorDecorationThemed/KatanaOnStand.png","FloorDecorationThemed:MagicMark":"assets/MapObject/FloorDecorationThemed/MagicMark.png","FloorDecorationParty:BalloonFiveColor":"assets/MapObject/FloorDecorationParty/BalloonFiveColor.png","FloorDecorationParty:BalloonTwoHeart":"assets/MapObject/FloorDecorationParty/BalloonTwoHeart.png","FloorDecorationParty:WeddingCake":"assets/MapObject/FloorDecorationParty/WeddingCake.png","FloorDecorationParty:WeddingArch":"assets/MapObject/FloorDecorationParty/WeddingArch.png","FloorDecorationParty:FlowerVasePink":"assets/MapObject/FloorDecorationParty/FlowerVasePink.png","FloorDecorationParty:BeachUmbrellaStripe":"assets/MapObject/FloorDecorationParty/BeachUmbrellaStripe.png","FloorDecorationParty:BeachTowelStripe":"assets/MapObject/FloorDecorationParty/BeachTowelStripe.png","FloorDecorationParty:Speaker":"assets/MapObject/FloorDecorationParty/Speaker.png","FloorDecorationParty:Presents":"assets/MapObject/FloorDecorationParty/Presents.png","FloorDecorationCamping:LogFire":"assets/MapObject/FloorDecorationCamping/LogFire.png","FloorDecorationCamping:LogFireAnim0":"assets/MapObject/FloorDecorationCamping/LogFireAnim0.png","FloorDecorationCamping:LogSingle":"assets/MapObject/FloorDecorationCamping/LogSingle.png","FloorDecorationCamping:TentBlue":"assets/MapObject/FloorDecorationCamping/TentBlue.png","FloorDecorationCamping:SleepingBagBlue":"assets/MapObject/FloorDecorationCamping/SleepingBagBlue.png","FloorDecorationCamping:ChairRed":"assets/MapObject/FloorDecorationCamping/ChairRed.png","FloorDecorationCamping:Hurdle1":"assets/MapObject/FloorDecorationCamping/Hurdle1.png","FloorDecorationCamping:Hurdle2":"assets/MapObject/FloorDecorationCamping/Hurdle2.png","FloorDecorationCamping:Hurdle3":"assets/MapObject/FloorDecorationCamping/Hurdle3.png","FloorDecorationExpanding:CouchPinkPreview":"assets/MapObject/FloorDecorationExpanding/CouchPinkPreview.png","FloorDecorationExpanding:BedBluePreview":"assets/MapObject/FloorDecorationExpanding/BedBluePreview.png","FloorDecorationExpanding:BallPitPreview":"assets/MapObject/FloorDecorationExpanding/BallPitPreview.png","FloorDecorationExpanding:VikingTablePreview":"assets/MapObject/FloorDecorationExpanding/VikingTablePreview.png","FloorDecorationExpanding:RailroadPreview":"assets/MapObject/FloorDecorationExpanding/RailroadPreview.png","FloorDecorationAnimal:CatCaramelHappy":"assets/MapObject/FloorDecorationAnimal/CatCaramelHappy.png","FloorDecorationAnimal:DogBrownHappy":"assets/MapObject/FloorDecorationAnimal/DogBrownHappy.png","FloorDecorationAnimal:RabbitBrownStand":"assets/MapObject/FloorDecorationAnimal/RabbitBrownStand.png","FloorDecorationAnimal:ChickenBrownIdleLeft":"assets/MapObject/FloorDecorationAnimal/ChickenBrownIdleLeft.png","FloorItem:Kennel":"assets/MapObject/FloorItem/Kennel.png","FloorItem:X-Cross":"assets/MapObject/FloorItem/X-Cross.png","FloorItem:BondageBench":"assets/MapObject/FloorItem/BondageBench.png","FloorItem:Trolley":"assets/MapObject/FloorItem/Trolley.png","FloorItem:Locker":"assets/MapObject/FloorItem/Locker.png","FloorItem:WoodenBox":"assets/MapObject/FloorItem/WoodenBox.png","FloorItem:Coffin":"assets/MapObject/FloorItem/Coffin.png","FloorItem:TheDisplayFrame":"assets/MapObject/FloorItem/TheDisplayFrame.png","FloorItem:Pole":"assets/MapObject/FloorItem/Pole.png","FloorItem:MedicalBed":"assets/MapObject/FloorItem/MedicalBed.png","FloorItem:FuturisticCrate":"assets/MapObject/FloorItem/FuturisticCrate.png","FloorNumber:Number0":"assets/MapObject/FloorNumber/Number0.png","FloorNumber:Number1":"assets/MapObject/FloorNumber/Number1.png","FloorNumber:Number2":"assets/MapObject/FloorNumber/Number2.png","FloorNumber:Number3":"assets/MapObject/FloorNumber/Number3.png","FloorNumber:Number4":"assets/MapObject/FloorNumber/Number4.png","FloorNumber:Number5":"assets/MapObject/FloorNumber/Number5.png","FloorNumber:Number6":"assets/MapObject/FloorNumber/Number6.png","FloorNumber:Number7":"assets/MapObject/FloorNumber/Number7.png","FloorNumber:Number8":"assets/MapObject/FloorNumber/Number8.png","FloorNumber:Number9":"assets/MapObject/FloorNumber/Number9.png","FloorLetter:LetterA":"assets/MapObject/FloorLetter/LetterA.png","FloorLetter:LetterB":"assets/MapObject/FloorLetter/LetterB.png","FloorLetter:LetterC":"assets/MapObject/FloorLetter/LetterC.png","FloorLetter:LetterD":"assets/MapObject/FloorLetter/LetterD.png","FloorLetter:LetterE":"assets/MapObject/FloorLetter/LetterE.png","FloorLetter:LetterF":"assets/MapObject/FloorLetter/LetterF.png","FloorLetter:LetterG":"assets/MapObject/FloorLetter/LetterG.png","FloorLetter:LetterH":"assets/MapObject/FloorLetter/LetterH.png","FloorLetter:LetterI":"assets/MapObject/FloorLetter/LetterI.png","FloorLetter:LetterJ":"assets/MapObject/FloorLetter/LetterJ.png","FloorLetter:LetterK":"assets/MapObject/FloorLetter/LetterK.png","FloorLetter:LetterL":"assets/MapObject/FloorLetter/LetterL.png","FloorLetter:LetterM":"assets/MapObject/FloorLetter/LetterM.png","FloorLetter:LetterN":"assets/MapObject/FloorLetter/LetterN.png","FloorLetter:LetterO":"assets/MapObject/FloorLetter/LetterO.png","FloorLetter:LetterP":"assets/MapObject/FloorLetter/LetterP.png","FloorLetter:LetterQ":"assets/MapObject/FloorLetter/LetterQ.png","FloorLetter:LetterR":"assets/MapObject/FloorLetter/LetterR.png","FloorLetter:LetterS":"assets/MapObject/FloorLetter/LetterS.png","FloorLetter:LetterT":"assets/MapObject/FloorLetter/LetterT.png","FloorLetter:LetterU":"assets/MapObject/FloorLetter/LetterU.png","FloorLetter:LetterV":"assets/MapObject/FloorLetter/LetterV.png","FloorLetter:LetterW":"assets/MapObject/FloorLetter/LetterW.png","FloorLetter:LetterX":"assets/MapObject/FloorLetter/LetterX.png","FloorLetter:LetterY":"assets/MapObject/FloorLetter/LetterY.png","FloorLetter:LetterZ":"assets/MapObject/FloorLetter/LetterZ.png","FloorIcon:IconCircle":"assets/MapObject/FloorIcon/IconCircle.png","FloorIcon:IconSquare":"assets/MapObject/FloorIcon/IconSquare.png","FloorIcon:IconTriangle":"assets/MapObject/FloorIcon/IconTriangle.png","FloorIcon:IconCross":"assets/MapObject/FloorIcon/IconCross.png","FloorIcon:IconDiamond":"assets/MapObject/FloorIcon/IconDiamond.png","FloorIcon:IconArrowUp":"assets/MapObject/FloorIcon/IconArrowUp.png","FloorIcon:IconArrowDown":"assets/MapObject/FloorIcon/IconArrowDown.png","FloorIcon:IconArrowLeft":"assets/MapObject/FloorIcon/IconArrowLeft.png","FloorIcon:IconArrowRight":"assets/MapObject/FloorIcon/IconArrowRight.png","FloorObstacle:Stalagmite":"assets/MapObject/FloorObstacle/Stalagmite.png","FloorObstacle:Rocks":"assets/MapObject/FloorObstacle/Rocks.png","FloorObstacle:GoldStones":"assets/MapObject/FloorObstacle/GoldStones.png","FloorObstacle:StonePile":"assets/MapObject/FloorObstacle/StonePile.png","FloorObstacle:Statue":"assets/MapObject/FloorObstacle/Statue.png","FloorObstacle:Knight":"assets/MapObject/FloorObstacle/Knight.png","FloorObstacle:Samurai":"assets/MapObject/FloorObstacle/Samurai.png","FloorObstacle:Totem":"assets/MapObject/FloorObstacle/Totem.png","FloorObstacle:EasterIsland":"assets/MapObject/FloorObstacle/EasterIsland.png","FloorObstacle:OrderOfTheVoidTotem":"assets/MapObject/FloorObstacle/OrderOfTheVoidTotem.png","FloorObstacle:Barrel":"assets/MapObject/FloorObstacle/Barrel.png","FloorObstacle:Chest":"assets/MapObject/FloorObstacle/Chest.png","FloorObstacle:IronBars":"assets/MapObject/FloorObstacle/IronBars.png","FloorObstacle:BarbFence":"assets/MapObject/FloorObstacle/BarbFence.png","FloorObstacle:PicketFence":"assets/MapObject/FloorObstacle/PicketFence.png","FloorObstacle:VelourRopeBarrier":"assets/MapObject/FloorObstacle/VelourRopeBarrier.png","FloorObstacle:Bush":"assets/MapObject/FloorObstacle/Bush.png","FloorObstacle:OakTree":"assets/MapObject/FloorObstacle/OakTree.png","FloorObstacle:OakTree_Fall":"assets/MapObject/FloorObstacle/OakTree_Fall.png","FloorObstacle:LeaflessTree":"assets/MapObject/FloorObstacle/LeaflessTree.png","FloorObstacle:PineTree":"assets/MapObject/FloorObstacle/PineTree.png","FloorObstacle:PalmTree":"assets/MapObject/FloorObstacle/PalmTree.png","FloorObstacle:Sakura":"assets/MapObject/FloorObstacle/Sakura.png","FloorObstacle:Cactus":"assets/MapObject/FloorObstacle/Cactus.png","FloorObstacle:ChristmasTree":"assets/MapObject/FloorObstacle/ChristmasTree.png","FloorObstacle:Window":"assets/MapObject/FloorObstacle/Window.png","FloorObstacle:TrashCan":"assets/MapObject/FloorObstacle/TrashCan.png","FloorObstacle:RoadCone":"assets/MapObject/FloorObstacle/RoadCone.png","FloorObstacle:LampPost":"assets/MapObject/FloorObstacle/LampPost.png","FloorObstacle:Pillar":"assets/MapObject/FloorObstacle/Pillar.png","WallDecoration:Painting":"assets/MapObject/WallDecoration/Painting.png","WallDecoration:Mirror":"assets/MapObject/WallDecoration/Mirror.png","WallDecoration:Candelabra0":"assets/MapObject/WallDecoration/Candelabra0.png","WallDecoration:Whip":"assets/MapObject/WallDecoration/Whip.png","WallDecoration:Fireplace":"assets/MapObject/WallDecoration/Fireplace.png","WallDecoration:Stocking":"assets/MapObject/WallDecoration/Stocking.png","WallDecoration:Moss":"assets/MapObject/WallDecoration/Moss.png","WallDecoration:Vines":"assets/MapObject/WallDecoration/Vines.png","WallDecoration:Vines2":"assets/MapObject/WallDecoration/Vines2.png","WallDecoration:SilverShield":"assets/MapObject/WallDecoration/SilverShield.png","WallDecoration:CrossedSabers":"assets/MapObject/WallDecoration/CrossedSabers.png","WallDecoration:Window":"assets/MapObject/WallDecoration/Window.png","WallDecoration:WindowNight":"assets/MapObject/WallDecoration/WindowNight.png","WallDecoration:StainedGlass":"assets/MapObject/WallDecoration/StainedGlass.png","WallDecoration:SchoolBoard":"assets/MapObject/WallDecoration/SchoolBoard.png","WallDecoration:FirstAidKit":"assets/MapObject/WallDecoration/FirstAidKit.png","WallDecoration:EyeTest":"assets/MapObject/WallDecoration/EyeTest.png","WallDecoration:Scroll":"assets/MapObject/WallDecoration/Scroll.png","WallDecoration:Wanted":"assets/MapObject/WallDecoration/Wanted.png","WallDecoration:Bookshelf":"assets/MapObject/WallDecoration/Bookshelf.png","WallDecoration:AirConditioner":"assets/MapObject/WallDecoration/AirConditioner.png","WallDecoration:ShowerHead":"assets/MapObject/WallDecoration/ShowerHead.png","WallDecoration:EnemaHead":"assets/MapObject/WallDecoration/EnemaHead.png","WallDecoration:MonitorSmall":"assets/MapObject/WallDecoration/MonitorSmall.png","WallDecoration:MonitorBigLeft":"assets/MapObject/WallDecoration/MonitorBigLeft.png","WallDecoration:MonitorBigRight":"assets/MapObject/WallDecoration/MonitorBigRight.png","WallPath:WoodOpen":"assets/MapObject/WallPath/WoodOpen.png","WallPath:WoodClosed":"assets/MapObject/WallPath/WoodClosed.png","WallPath:WoodLocked":"assets/MapObject/WallPath/WoodLocked.png","WallPath:WoodLockedBronze":"assets/MapObject/WallPath/WoodLockedBronze.png","WallPath:WoodLockedSilver":"assets/MapObject/WallPath/WoodLockedSilver.png","WallPath:WoodLockedGold":"assets/MapObject/WallPath/WoodLockedGold.png","WallPath:Metal":"assets/MapObject/WallPath/Metal.png","WallPath:MetalUp":"assets/MapObject/WallPath/MetalUp.png","WallPath:MetalDown":"assets/MapObject/WallPath/MetalDown.png","WallPath:MetalLockedBronze":"assets/MapObject/WallPath/MetalLockedBronze.png","WallPath:MetalLockedSilver":"assets/MapObject/WallPath/MetalLockedSilver.png","WallPath:MetalLockedGold":"assets/MapObject/WallPath/MetalLockedGold.png","WallPath:BrownDoor":"assets/MapObject/WallPath/BrownDoor.png","WallPath:BrownDoorOpen":"assets/MapObject/WallPath/BrownDoorOpen.png","WallPath:RoyalDoor":"assets/MapObject/WallPath/RoyalDoor.png","WallPath:RoyalDoorOpen":"assets/MapObject/WallPath/RoyalDoorOpen.png","WallPath:SteelDoor":"assets/MapObject/WallPath/SteelDoor.png","WallPath:SteelDoorOpen":"assets/MapObject/WallPath/SteelDoorOpen.png","WallPath:GrayDoor":"assets/MapObject/WallPath/GrayDoor.png","WallPath:GrayDoorOpen":"assets/MapObject/WallPath/GrayDoorOpen.png","Banners:Red":"assets/MapObject/Banners/Red.png","Banners:Blue":"assets/MapObject/Banners/Blue.png","Banners:Green":"assets/MapObject/Banners/Green.png","Banners:Yellow":"assets/MapObject/Banners/Yellow.png","Banners:Black":"assets/MapObject/Banners/Black.png","Banners:PaladinBanner":"assets/MapObject/Banners/PaladinBanner.png","Banners:ServiOrdinisBanner":"assets/MapObject/Banners/ServiOrdinisBanner.png","Banners:BellflowerBanner":"assets/MapObject/Banners/BellflowerBanner.png","Banners:BondageClub":"assets/MapObject/Banners/BondageClub.png","Banners:Inquisition":"assets/MapObject/Banners/Inquisition.png","Banners:MagesSacrosanctorum":"assets/MapObject/Banners/MagesSacrosanctorum.png","Banners:MaidSorority":"assets/MapObject/Banners/MaidSorority.png","Banners:Priesthood":"assets/MapObject/Banners/Priesthood.png","Banners:VoidOrder":"assets/MapObject/Banners/VoidOrder.png"};</script>
+  <script>// BC room-map visual editor — UI logic (v2: tools, undo/redo, incremental paint).
+// Uses window.LZString, window.MAP_CATALOG, window.MapLib (all inlined by build-editor.js).
+(function () {
+  "use strict";
+  const MapLib = window.MapLib;
+  const CAT = window.MAP_CATALOG;
+  const IMG = window.MAP_IMAGES || {};
+  const I18N = window.MAP_I18N;
+  const T = I18N.t;
+  const W = MapLib.W, H = MapLib.H, BLANK = MapLib.BLANK;
+  const OAK = MapLib.idByStyle("Floor:OakWood");
+  const CELL_BASE = 13, ZOOM_MIN = 4, ZOOM_MAX = 40, ZOOM_STEP = 2;
+  const MAX_HISTORY = 80;
+
+  // ---------- shared lookups ----------
+  function compOf(id, layer) {
+    let c;
+    if (layer === "tiles") c = CAT.tiles.find((t) => t.id === id);
+    else c = CAT.objects.find((o) => o.id === id) || CAT.effects.find((e) => e.id === id);
+    return c || { id, type: "?", style: "?", layer: "?" };
+  }
+  function shade(hex, dl) {
+    const n = parseInt(hex.slice(1), 16);
+    let r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+    r = Math.max(0, Math.min(255, r + dl)); g = Math.max(0, Math.min(255, g + dl)); b = Math.max(0, Math.min(255, b + dl));
+    return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+  }
+  function colorFor(comp) {
+    const t = comp.type, s = comp.style || "";
+    let base;
+    if (t === "Wall" || s === "HalfWall") base = "#7f8c9b";
+    else if (t === "Floor") base = "#b5895a";
+    else if (t === "WallPath") base = "#e0a93b";
+    else if (t === "FloorObstacle") base = "#c0563f";
+    else if (t === "FloorDecoration") base = /^Key/.test(s) ? "#ffe14d" : (s === "EntryFlag" || s === "ExitFlag") ? "#5fd06b" : "#3fae9b";
+    else if (t === "FloorItem") base = "#9b6bd6";
+    else if (t === "FloorNumber" || t === "FloorLetter" || t === "FloorIcon") base = "#56c0e0";
+    else if (t === "Banners") base = "#d36ba0";
+    else if (t === "Water") base = "#2f7fae";
+    else if (t === "FloorExterior") base = "#6f8f4f";
+    else base = "#888888";
+    let h = 0; for (const ch of s) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+    return shade(base, (h % 24) - 12);
+  }
+  // Component label — delegates to the i18n layer (zh-label for cn/tw, BC style otherwise).
+  function zh(comp) {
+    return I18N.labelForComp(comp);
+  }
+  function imgFor(comp) {
+    const key = (comp.type || "") + ":" + (comp.style || "");
+    return IMG[key] || null;
+  }
+  // Paint a component onto a DOM element using longhand props (works in jsdom + real browsers).
+  function paintBg(el, comp) {
+    const c = colorFor(comp);
+    const img = imgFor(comp);
+    const isTile = comp.type === "Floor" || comp.type === "Wall" || comp.type === "Water" || comp.type === "FloorExterior";
+    el.style.backgroundColor = c;
+    if (img) {
+      el.style.backgroundImage = `url("${img}")`;
+      el.style.backgroundSize = isTile ? "cover" : "contain";
+      el.style.backgroundPosition = "center";
+      el.style.backgroundRepeat = "no-repeat";
+    } else {
+      el.style.backgroundImage = "none";
+    }
+  }
+  function badgeFor(comp) {
+    const s = comp.style || "";
+    if (/Bronze/i.test(s)) return { color: "#cd7f32", label: T("badge.bronze") };
+    if (/Silver/i.test(s)) return { color: "#c0c0c0", label: T("badge.silver") };
+    if (/Gold/i.test(s)) return { color: "#ffd700", label: T("badge.gold") };
+    return null;
+  }
+
+  // ---------- state ----------
+  const state = {
+    layer: "tiles",
+    tool: "brush",          // brush | rect | line | fill
+    eraser: false,
+    brush: null,            // { id, layer, type, style, label }
+    tilesGrid: MapLib.createGrid(OAK),
+    objGrid: MapLib.createGrid(BLANK),
+    fog: false,
+    type: "Always",
+    mouseDown: false,
+    dragStart: null,        // {x,y} for rect/line preview
+    dragBase: null,         // snapshot at stroke start (for preview)
+    hover: null,            // {x,y}
+    zoom: CELL_BASE,
+    search: "",
+    history: [],
+    histIdx: -1,
+  };
+  let cellEls = []; // cellEls[y][x] -> DOM element
+  let lastStats = null; // last updateStats args, re-rendered on locale change
+
+  // ---------- history (undo/redo) ----------
+  function snapshot() {
+    return {
+      tiles: state.tilesGrid.map((r) => r.slice()),
+      obj: state.objGrid.map((r) => r.slice()),
+    };
+  }
+  function restore(s) {
+    state.tilesGrid = s.tiles.map((r) => r.slice());
+    state.objGrid = s.obj.map((r) => r.slice());
+    renderGrid();
+  }
+  function pushHistory() {
+    // drop any "future" then append current state
+    if (state.histIdx < state.history.length - 1)
+      state.history = state.history.slice(0, state.histIdx + 1);
+    state.history.push(snapshot());
+    if (state.history.length > MAX_HISTORY) state.history.shift();
+    state.histIdx = state.history.length - 1;
+    updateUndoButtons();
+  }
+  function undo() {
+    if (state.histIdx <= 0) return;
+    state.histIdx--;
+    restore(state.history[state.histIdx]);
+    updateUndoButtons();
+    flash(T("flash.undo"));
+  }
+  function redo() {
+    if (state.histIdx >= state.history.length - 1) return;
+    state.histIdx++;
+    restore(state.history[state.histIdx]);
+    updateUndoButtons();
+    flash(T("flash.redo"));
+  }
+  function updateUndoButtons() {
+    const u = document.getElementById("btnUndo"), r = document.getElementById("btnRedo");
+    if (u) u.disabled = state.histIdx <= 0;
+    if (r) r.disabled = state.histIdx >= state.history.length - 1;
+  }
+
+  // ---------- palette ----------
+  function buildPaletteSource() {
+    const C = T("cat.floor"), W_ = T("cat.wall"), E = T("cat.exterior"), Wa = T("cat.water");
+    const D = T("cat.door"), K = T("cat.key"), Ob = T("cat.obstacle"), Dec = T("cat.decoration");
+    const M = T("cat.marker"), It = T("cat.item"), B = T("cat.banners"), WD = T("cat.walldeco");
+    const groups = {
+      tiles: { [C]: [], [W_]: [], [E]: [], [Wa]: [] },
+      objects: { [D]: [], [K]: [], [Ob]: [], [Dec]: [], [M]: [], [It]: [], [B]: [], [WD]: [] },
+    };
+    CAT.tiles.forEach((t) => {
+      if (t.type === "Wall" || t.style === "HalfWall") groups.tiles[W_].push(t);
+      else if (t.type === "FloorExterior") groups.tiles[E].push(t);
+      else if (t.type === "Water") groups.tiles[Wa].push(t);
+      else groups.tiles[C].push(t);
+    });
+    CAT.objects.forEach((o) => {
+      const s = o.style || "";
+      if (o.type === "WallPath") groups.objects[D].push(o);
+      else if (o.type === "FloorDecoration" && /^Key/.test(s)) groups.objects[K].push(o);
+      else if (o.type === "FloorDecoration" && (s === "EntryFlag" || s === "ExitFlag")) groups.objects[M].push(o);
+      else if (o.type === "FloorObstacle") groups.objects[Ob].push(o);
+      else if (o.type === "FloorItem") groups.objects[It].push(o);
+      else if (o.type === "Banners") groups.objects[B].push(o);
+      else if (o.type === "WallDecoration") groups.objects[WD].push(o);
+      else groups.objects[Dec].push(o);
+    });
+    return groups;
+  }
+
+  function matchSearch(comp) {
+    if (!state.search) return true;
+    const q = state.search.toLowerCase();
+    return (
+      zh(comp).toLowerCase().includes(q) ||
+      (comp.style || "").toLowerCase().includes(q) ||
+      (comp.type || "").toLowerCase().includes(q) ||
+      String(comp.id) === state.search
+    );
+  }
+
+  function renderPalette() {
+    const root = document.getElementById("palette");
+    root.innerHTML = "";
+    const groups = buildPaletteSource();
+    const layerGroups = groups[state.layer]; // { categoryName: [comp, ...] }
+    const items = [].concat.apply([], Object.values(layerGroups)).filter(matchSearch);
+    const cats = {};
+    items.forEach((c) => {
+      const catName = Object.keys(layerGroups).find((k) => layerGroups[k].includes(c)) || T("cat.other");
+      (cats[catName] = cats[catName] || []).push(c);
+    });
+    Object.keys(cats).forEach((catName) => {
+      const sec = document.createElement("div"); sec.className = "pal-section";
+      const h = document.createElement("div"); h.className = "pal-title";
+      h.textContent = catName + "  (" + cats[catName].length + ")"; sec.appendChild(h);
+      const grid = document.createElement("div"); grid.className = "pal-grid";
+      cats[catName].forEach((comp) => {
+        const el = document.createElement("div"); el.className = "pal-item";
+        el.title = zh(comp) + "  (" + comp.type + ":" + comp.style + "  #" + comp.id + ")";
+        paintBg(el, comp, state.layer === "tiles");
+        const b = badgeFor(comp);
+        if (b) {
+          const badge = document.createElement("span");
+          badge.className = "pal-badge"; badge.style.background = b.color; badge.textContent = b.label;
+          el.appendChild(badge);
+        }
+        const lbl = document.createElement("span"); lbl.textContent = zh(comp); el.appendChild(lbl);
+        if (state.brush && state.brush.id === comp.id && state.brush.layer === state.layer) el.classList.add("sel");
+        el.addEventListener("click", () => selectBrush(comp));
+        grid.appendChild(el);
+      });
+      sec.appendChild(grid); root.appendChild(sec);
+    });
+    if (!items.length) root.innerHTML = '<div class="hint" style="padding:10px">' + T("pal.empty") + '</div>';
+  }
+
+  function selectBrush(comp) {
+    state.brush = { id: comp.id, layer: state.layer, type: comp.type, style: comp.style, comp };
+    renderPalette();
+    updateBrushInfo();
+  }
+
+  function updateBrushInfo() {
+    const el = document.getElementById("brushInfo");
+    const toolName = { brush: T("tool.brush"), rect: T("tool.rect"), line: T("tool.line"), fill: T("tool.fill") }[state.tool];
+    let s = T("info.prefix") + toolName;
+    if (state.eraser) s += " " + T("info.eraser");
+    else if (state.brush) s += " " + T("info.brush") + I18N.labelForComp(state.brush.comp) + T("info.to") + (state.brush.layer === "tiles" ? T("layer.tiles") : T("layer.objects"));
+    else s += " " + T("info.notSelected");
+    el.textContent = s;
+  }
+
+  // ---------- grid ----------
+  function buildGrid() {
+    const g = document.getElementById("grid");
+    g.style.setProperty("--n", W);
+    g.innerHTML = "";
+    cellEls = Array.from({ length: H }, () => new Array(W));
+    for (let y = 0; y < H; y++) {
+      for (let x = 0; x < W; x++) {
+        const cell = document.createElement("div");
+        cell.className = "cell"; cell.dataset.x = x; cell.dataset.y = y;
+        const obj = document.createElement("div"); obj.className = "obj"; cell.appendChild(obj);
+        cell.addEventListener("mousedown", (e) => onCellDown(e, x, y));
+        cell.addEventListener("mouseenter", () => onCellEnter(x, y));
+        cell.addEventListener("contextmenu", (e) => { e.preventDefault(); });
+        g.appendChild(cell);
+        cellEls[y][x] = cell;
+      }
+    }
+    renderGrid();
+  }
+
+  function updateCellDOM(x, y) {
+    const cell = cellEls[y][x];
+    const tid = state.tilesGrid[y][x], oid = state.objGrid[y][x];
+    paintBg(cell, compOf(tid, "tiles"), true);
+    if (oid !== BLANK) paintBg(cell.firstChild, compOf(oid, "objects"), false);
+    else { cell.firstChild.style.backgroundImage = "none"; cell.firstChild.style.backgroundColor = "transparent"; }
+  }
+
+  function renderGrid() {
+    for (let y = 0; y < H; y++)
+      for (let x = 0; x < W; x++) updateCellDOM(x, y);
+  }
+
+  // ---------- painting primitives ----------
+  function targetLayer() { return state.eraser ? state.layer : (state.brush ? state.brush.layer : state.layer); }
+  function paintId(layer) {
+    if (state.eraser) return layer === "tiles" ? OAK : BLANK;
+    return state.brush ? state.brush.id : (layer === "tiles" ? OAK : BLANK);
+  }
+  function setCellLayer(x, y, layer, id) {
+    const grid = layer === "tiles" ? state.tilesGrid : state.objGrid;
+    if (x < 0 || y < 0 || x >= W || y >= H) return;
+    grid[y][x] = id; updateCellDOM(x, y);
+  }
+  function eraseCell(x, y) {
+    const grid = state.layer === "tiles" ? state.tilesGrid : state.objGrid;
+    grid[y][x] = state.layer === "tiles" ? OAK : BLANK;
+    updateCellDOM(x, y);
+  }
+  function paintCell(x, y) {
+    const layer = targetLayer();
+    setCellLayer(x, y, layer, paintId(layer));
+  }
+  function floodFill(sx, sy) {
+    const layer = targetLayer();
+    const grid = layer === "tiles" ? state.tilesGrid : state.objGrid;
+    const target = grid[sy][sx];
+    const repl = paintId(layer);
+    if (repl === target) return;
+    const stack = [[sx, sy]]; const seen = new Set();
+    while (stack.length) {
+      const [x, y] = stack.pop();
+      if (x < 0 || y < 0 || x >= W || y >= H) continue;
+      const k = x + "," + y; if (seen.has(k)) continue; seen.add(k);
+      if (grid[y][x] !== target) continue;
+      grid[y][x] = repl; updateCellDOM(x, y);
+      stack.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
+    }
+  }
+  function drawLine(x0, y0, x1, y1) {
+    const layer = targetLayer(); const id = paintId(layer);
+    const dx = Math.abs(x1 - x0), dy = Math.abs(y1 - y0);
+    const sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;
+    let err = dx - dy, x = x0, y = y0;
+    while (true) {
+      setCellLayer(x, y, layer, id);
+      if (x === x1 && y === y1) break;
+      const e2 = 2 * err;
+      if (e2 > -dy) { err -= dy; x += sx; }
+      if (e2 < dx) { err += dx; y += sy; }
+    }
+  }
+  function drawRect(x0, y0, x1, y1) {
+    const layer = targetLayer(); const id = paintId(layer);
+    const xa = Math.min(x0, x1), xb = Math.max(x0, x1), ya = Math.min(y0, y1), yb = Math.max(y0, y1);
+    for (let x = xa; x <= xb; x++) { setCellLayer(x, ya, layer, id); setCellLayer(x, yb, layer, id); }
+    for (let y = ya; y <= yb; y++) { setCellLayer(xa, y, layer, id); setCellLayer(xb, y, layer, id); }
+  }
+
+  // ---------- pointer interaction ----------
+  function onCellDown(e, x, y) {
+    // only left (paint) / right (erase) act on cells; middle is reserved for panning
+    if (e.button !== 0 && e.button !== 2) return;
+    e.preventDefault();
+    if (e.button === 2) { // right click = erase stroke
+      pushHistory(); state.mouseDown = true; state.eraseStroke = true; eraseCell(x, y); return;
+    }
+    if (state.tool === "fill") { pushHistory(); floodFill(x, y); return; }
+    if (state.tool === "brush") {
+      pushHistory(); state.mouseDown = true;
+      if (state.eraser) eraseCell(x, y); else paintCell(x, y);
+      return;
+    }
+    // rect / line: begin preview stroke
+    state.dragBase = snapshot();
+    state.dragStart = { x, y };
+    state.mouseDown = true;
+    applyShape(x, y);
+  }
+  function onCellEnter(x, y) {
+    state.hover = { x, y };
+    const coords = document.getElementById("coords");
+    if (coords) {
+      const t = compOf(state.tilesGrid[y][x], "tiles"), o = compOf(state.objGrid[y][x], "objects");
+      coords.textContent = `(${x}, ${y})  ${I18N.labelForComp(t)} / ${o.style === "Blank" ? "—" : I18N.labelForComp(o)}`;
+    }
+    if (!state.mouseDown) return;
+    if (state.eraseStroke) { eraseCell(x, y); return; }
+    if (state.tool === "brush") { if (state.eraser) eraseCell(x, y); else paintCell(x, y); return; }
+    if (state.tool === "rect" || state.tool === "line") applyShape(x, y);
+  }
+  function applyShape(x, y) {
+    if (!state.dragBase || !state.dragStart) return;
+    restore(state.dragBase); // back to pre-stroke, no history push
+    const s = state.dragStart;
+    if (state.tool === "rect") drawRect(s.x, s.y, x, y);
+    else if (state.tool === "line") drawLine(s.x, s.y, x, y);
+  }
+  function onDocUp() {
+    if (!state.mouseDown) return;
+    if ((state.tool === "rect" || state.tool === "line") && state.dragBase) {
+      pushHistory(); // commit the previewed shape
+    }
+    state.mouseDown = false; state.dragStart = null; state.dragBase = null; state.eraseStroke = false;
+  }
+
+  document.addEventListener("mouseup", onDocUp);
+
+  // ---------- export / import ----------
+  function exportStr() {
+    try {
+      const str = MapLib.encode({ type: state.type, tiles: state.tilesGrid, objects: state.objGrid, fog: state.fog });
+      document.getElementById("output").value = str;
+      updateStats(true, str.length);
+      return str;
+    } catch (err) {
+      document.getElementById("output").value = "ERROR: " + err.message;
+      updateStats(false, 0, err.message);
+      return null;
+    }
+  }
+
+  // Load a mappaste string from the textarea (paste or file)
+  function loadFromString(str) {
+    if (!str) return false;
+    try {
+      const data = MapLib.decode(str);
+      pushHistory();
+      state.tilesGrid = MapLib.charsToGrid(data.Tiles);
+      state.objGrid = MapLib.charsToGrid(data.Objects);
+      if (typeof data.Fog === "boolean") { state.fog = data.Fog; document.getElementById("fog").checked = data.Fog; }
+      if (data.Type) { state.type = data.Type; document.getElementById("typeSel").value = data.Type; }
+      renderGrid(); updateStats(true, str.length, T("flash.loaded"));
+      return true;
+    } catch (err) { updateStats(false, str.length, T("flash.loadFail") + err.message); return false; }
+  }
+
+  // Export as .txt download
+  function exportFile() {
+    const str = exportStr();
+    if (!str) return;
+    const blob = new Blob([str], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "bc-mappaste.txt"; a.click();
+    URL.revokeObjectURL(url);
+    flash(T("flash.exportedFile"));
+  }
+
+  // Import from local file
+  function importFile(file) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = (e.target.result || "").trim();
+      document.getElementById("output").value = text;
+      loadFromString(text);
+    };
+    reader.readAsText(file);
+  }
+  function updateStats(ok, len, msg) {
+    lastStats = { ok, len, msg };
+    const el = document.getElementById("stats");
+    const tCount = state.tilesGrid.flat().filter((v) => v !== OAK).length;
+    const oCount = state.objGrid.flat().filter((v) => v !== BLANK).length;
+    el.innerHTML = T("stats.tiles") + ` ${tCount} · ` + T("stats.objs") + ` ${oCount} · ` + T("stats.len") + ` ${len}<br>` +
+      (msg ? (ok ? `<span class="ok">${msg}</span>` : `<span class="err">${msg}</span>`) : (ok ? `<span class="ok">${T("stats.valid")}</span>` : `<span class="err">${T("stats.invalid")}</span>`));
+  }
+  function clearMap() {
+    pushHistory();
+    state.tilesGrid = MapLib.createGrid(OAK);
+    state.objGrid = MapLib.createGrid(BLANK);
+    renderGrid(); document.getElementById("output").value = "";
+    updateStats(true, 0, T("flash.cleared"));
+  }
+  function fillFloor() {
+    pushHistory();
+    const sel = state.brush && state.brush.layer === "tiles" ? state.brush : null;
+    const id = sel ? sel.id : OAK;
+    state.tilesGrid = MapLib.createGrid(id);
+    renderGrid();
+    flash(T("flash.filled") + (sel ? I18N.labelForComp(sel.comp) : T("oak")));
+  }
+  function loadExample() {
+    const DOOR = MapLib.idByStyle("WallPath:WoodLockedGold");
+    const KEY = MapLib.idByStyle("FloorDecoration:KeyGold");
+    const STATUE = MapLib.idByStyle("FloorObstacle:Statue");
+    const ENTRY = MapLib.idByStyle("FloorDecoration:EntryFlag");
+    const t = MapLib.createGrid(OAK), o = MapLib.createGrid(BLANK);
+    for (let x = 0; x < W; x++) { t[0][x] = MapLib.idByStyle("Wall:MixedWood"); t[H - 1][x] = MapLib.idByStyle("Wall:MixedWood"); }
+    for (let y = 0; y < H; y++) { t[y][0] = MapLib.idByStyle("Wall:MixedWood"); t[y][W - 1] = MapLib.idByStyle("Wall:MixedWood"); }
+    o[0][20] = DOOR; o[5][20] = KEY; o[12][10] = STATUE; o[2][20] = ENTRY;
+    pushHistory();
+    state.tilesGrid = t; state.objGrid = o;
+    renderGrid(); exportStr();
+  }
+  function copyOutput() {
+    const ta = document.getElementById("output");
+    if (!ta.value || ta.value.startsWith("ERROR")) return;
+    ta.select();
+    navigator.clipboard.writeText(ta.value).then(
+      () => flash(T("flash.copied")),
+      () => { document.execCommand("copy"); flash(T("flash.copiedCompat")); }
+    );
+  }
+  function flash(msg) {
+    const el = document.getElementById("flash");
+    el.textContent = msg; el.classList.remove("showing");
+    // force reflow to restart animation
+    void el.offsetWidth;
+    el.style.opacity = "1"; el.classList.add("showing");
+    setTimeout(() => { el.style.opacity = "0"; el.classList.remove("showing"); }, 1400);
+  }
+
+  // ---------- pan / drag (Space+drag or middle-click) ----------
+  (function initPan() {
+    var wrap = document.getElementById("gridWrap");
+    if (!wrap) return;
+    var dragging = false, sx = 0, sy = 0, sl = 0, st = 0;
+
+    function startPan(e) {
+      dragging = true; sx = e.clientX; sy = e.clientY;
+      sl = wrap.scrollLeft; st = wrap.scrollTop;
+      wrap.classList.add("panning");
+      e.preventDefault();
+    }
+
+    wrap.addEventListener("mousedown", function (e) {
+      // middle button always pans
+      if (e.button === 1) { startPan(e); return; }
+      // left button + Space = pan
+      if (e.button === 0 && e.spaceKey) { startPan(e); return; }
+    });
+    // track Space key state
+    document.addEventListener("keydown", function (e) {
+      if (e.key === " " && !e.repeat) { e.spaceKey = true; wrap.style.cursor = "grab"; }
+    });
+    document.addEventListener("keyup", function (e) {
+      if (e.key === " ") { e.spaceKey = false; wrap.style.cursor = ""; }
+    });
+    document.addEventListener("mousemove", function (e) {
+      if (!dragging) return;
+      wrap.scrollLeft = sl - (e.clientX - sx);
+      wrap.scrollTop  = st - (e.clientY - sy);
+    });
+    document.addEventListener("mouseup", function () {
+      if (!dragging) return;
+      dragging = false;
+      wrap.classList.remove("panning");
+      if (!document.spaceKey) wrap.style.cursor = "";
+    });
+    // prevent spacebar from scrolling page when focused on grid
+    wrap.addEventListener("keydown", function (e) { if (e.key === " ") e.preventDefault(); });
+  })();
+
+  // ---------- zoom ----------
+  function setZoom(px) {
+    state.zoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, px));
+    var grid = document.getElementById("grid");
+    grid.style.transition = "none"; // instant during drag
+    grid.style.setProperty("--cell", state.zoom + "px");
+    document.getElementById("zoomLevel").textContent = Math.round(state.zoom / CELL_BASE * 100) + "%";
+  }
+  function zoomFit() {
+    const wrap = document.getElementById("gridWrap");
+    const fitPx = Math.floor(Math.min((wrap.clientWidth - 20) / W, (wrap.clientHeight - 20) / H));
+    setZoom(Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, fitPx)));
+  }
+
+  // ---------- tools / layer UI ----------
+  function setTool(tool) {
+    state.tool = tool; state.eraser = false;
+    ["brush", "rect", "line", "fill"].forEach((t) => {
+      const b = document.getElementById("tool" + t[0].toUpperCase() + t.slice(1));
+      if (b) b.classList.toggle("active", t === tool);
+    });
+    document.getElementById("toolEraser").classList.remove("active");
+    updateBrushInfo();
+  }
+  function setEraser(on) {
+    state.eraser = on;
+    document.getElementById("toolEraser").classList.toggle("active", on);
+    if (on) ["brush", "rect", "line", "fill"].forEach((t) => document.getElementById("tool" + t[0].toUpperCase() + t.slice(1)).classList.remove("active"));
+    updateBrushInfo();
+  }
+  function setLayer(layer) {
+    state.layer = layer;
+    document.getElementById("layerTiles").classList.toggle("active", layer === "tiles");
+    document.getElementById("layerObjects").classList.toggle("active", layer === "objects");
+    state.brush = null;
+    renderPalette(); updateBrushInfo();
+  }
+
+  // ---------- keyboard ----------
+  function onKey(e) {
+    const tag = (e.target && e.target.tagName) || "";
+    if (tag === "TEXTAREA" || tag === "INPUT") return;
+    const mod = e.ctrlKey || e.metaKey;
+    if (mod && e.key.toLowerCase() === "z") { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
+    if (mod && e.key.toLowerCase() === "y") { e.preventDefault(); redo(); return; }
+    if (mod) return;
+    const k = e.key.toLowerCase();
+    if (k === "b") setTool("brush");
+    else if (k === "r") setTool("rect");
+    else if (k === "l") setTool("line");
+    else if (k === "f") setTool("fill");
+    else if (k === "e") setEraser(!state.eraser);
+    else if (k === "+" || k === "=") setZoom(state.zoom + ZOOM_STEP);
+    else if (k === "-" || k === "_") setZoom(state.zoom - ZOOM_STEP);
+    else if (k === "escape") { state.brush = null; renderPalette(); updateBrushInfo(); }
+  }
+
+  // ---------- i18n glue ----------
+  function setText(id, txt) { const el = document.getElementById(id); if (el) el.textContent = txt; }
+  function setAttr(id, a, v) { const el = document.getElementById(id); if (el) el.setAttribute(a, v); }
+
+  function initLangSelect() {
+    const sel = document.getElementById("langSel");
+    if (sel) {
+      I18N.available().forEach((loc) => {
+        const opt = document.createElement("option");
+        opt.value = loc; opt.textContent = I18N.localeName(loc);
+        sel.appendChild(opt);
+      });
+      sel.value = I18N.getSavedLocale();
+      sel.addEventListener("change", () => I18N.setLocale(sel.value));
+    }
+    document.addEventListener("localechange", applyLocale);
+  }
+
+  function applyLocale() {
+    // header
+    document.title = T("app.title");
+    setText("appTitle", T("app.title"));
+    setText("appSub", T("app.subtitle"));
+    setText("modeLabel", T("mode.label"));
+    const ts = document.getElementById("typeSel");
+    if (ts) {
+      const map = { Always: "mode.always", Online: "mode.online", Offline: "mode.offline" };
+      Object.keys(map).forEach((v) => { const o = ts.querySelector('option[value="' + v + '"]'); if (o) o.textContent = T(map[v]); });
+    }
+    setText("fogLabel", T("fog"));
+    // toolbar buttons
+    setText("btnUndo", T("undo")); setAttr("btnUndo", "title", T("undo") + " (Ctrl+Z)");
+    setText("btnRedo", T("redo")); setAttr("btnRedo", "title", T("redo") + " (Ctrl+Y)");
+    setText("btnFill", T("fillFloor")); setAttr("btnFill", "title", T("fillFloor"));
+    setText("btnClear", T("clear"));
+    setText("btnExample", T("example"));
+    setText("btnExport", T("genCode")); setAttr("btnExport", "title", T("genCode"));
+    setText("btnFileImport", T("importFile")); setAttr("btnFileImport", "title", T("importFile"));
+    setText("btnFileExport", T("exportFile")); setAttr("btnFileExport", "title", T("exportFile"));
+    // layer toggles
+    setText("layerTiles", T("layer.tiles"));
+    setText("layerObjects", T("layer.objects"));
+    // search placeholder
+    const ps = document.getElementById("palSearch"); if (ps) ps.placeholder = T("search.ph");
+    // drawing tools
+    setText("toolBrush_t", T("tool.brush")); setAttr("toolBrush", "title", T("tool.brush.title"));
+    setText("toolRect_t", T("tool.rect")); setAttr("toolRect", "title", T("tool.rect.title"));
+    setText("toolLine_t", T("tool.line")); setAttr("toolLine", "title", T("tool.line.title"));
+    setText("toolFill_t", T("tool.fill")); setAttr("toolFill", "title", T("tool.fill.title"));
+    setText("toolEraser_t", T("tool.eraser")); setAttr("toolEraser", "title", T("tool.eraser.title"));
+    // zoom fit
+    setText("zoomFit", T("zoom.fit")); setAttr("zoomFit", "title", T("zoom.fit.title"));
+    // right panel
+    setText("panelTitle", T("panel.title"));
+    const out = document.getElementById("output"); if (out) out.placeholder = T("output.ph");
+    setText("btnCopy", T("copy"));
+    const hint = document.getElementById("hintImport"); if (hint) hint.innerHTML = T("hint.import");
+    setText("stageHint", T("stage.hint"));
+    // language label + select value
+    setText("langLabel", T("lang.label"));
+    const ls = document.getElementById("langSel"); if (ls) ls.value = I18N.getSavedLocale();
+    // dynamic re-render
+    renderPalette();
+    updateBrushInfo();
+    if (lastStats) updateStats(lastStats.ok, lastStats.len, lastStats.msg);
+  }
+
+  // ---------- init ----------
+  function init() {
+    renderPalette(); updateBrushInfo(); buildGrid(); updateStats(true, 0, T("ready"));
+    updateUndoButtons();
+    initLangSelect();
+    applyLocale();
+
+    document.getElementById("layerTiles").addEventListener("click", () => setLayer("tiles"));
+    document.getElementById("layerObjects").addEventListener("click", () => setLayer("objects"));
+    document.getElementById("fog").addEventListener("change", (e) => { state.fog = e.target.checked; });
+    document.getElementById("typeSel").addEventListener("change", (e) => { state.type = e.target.value; });
+    document.getElementById("btnClear").addEventListener("click", clearMap);
+    document.getElementById("btnFill").addEventListener("click", fillFloor);
+    document.getElementById("btnExample").addEventListener("click", loadExample);
+    document.getElementById("btnExport").addEventListener("click", exportStr);
+    document.getElementById("btnCopy").addEventListener("click", copyOutput);
+    document.getElementById("btnFileExport").addEventListener("click", exportFile);
+    document.getElementById("btnFileImport").addEventListener("click", () => {
+      const fi = document.getElementById("fileImport");
+      fi.value = ""; // reset so same file re-triggers
+      fi.click();
+    });
+    document.getElementById("fileImport").addEventListener("change", (e) => {
+      if (e.target.files && e.target.files[0]) importFile(e.target.files[0]);
+    });
+    // paste auto-detect in textarea
+    document.getElementById("output").addEventListener("paste", () => {
+      setTimeout(() => loadFromString(document.getElementById("output").value.trim()), 50);
+    });
+    document.getElementById("btnUndo").addEventListener("click", undo);
+    document.getElementById("btnRedo").addEventListener("click", redo);
+    document.getElementById("toolBrush").addEventListener("click", () => setTool("brush"));
+    document.getElementById("toolRect").addEventListener("click", () => setTool("rect"));
+    document.getElementById("toolLine").addEventListener("click", () => setTool("line"));
+    document.getElementById("toolFill").addEventListener("click", () => setTool("fill"));
+    document.getElementById("toolEraser").addEventListener("click", () => setEraser(!state.eraser));
+    document.getElementById("zoomIn").addEventListener("click", () => setZoom(state.zoom + ZOOM_STEP));
+    document.getElementById("zoomOut").addEventListener("click", () => setZoom(state.zoom - ZOOM_STEP));
+    document.getElementById("zoomFit").addEventListener("click", zoomFit);
+    document.getElementById("gridWrap").addEventListener("wheel", (e) => {
+      e.preventDefault(); setZoom(state.zoom + (e.deltaY < 0 ? ZOOM_STEP : -ZOOM_STEP));
+    }, { passive: false });
+    const search = document.getElementById("palSearch");
+    if (search) search.addEventListener("input", (e) => { state.search = e.target.value.trim(); renderPalette(); });
+
+    document.addEventListener("keydown", onKey);
+    window.addEventListener("resize", () => { if (state.zoom === CELL_BASE) zoomFit(); });
+
+    // seed history with initial (empty) state
+    state.history = [snapshot()]; state.histIdx = 0; updateUndoButtons();
+
+    setTool("brush");
+    setZoom(CELL_BASE);
+    selectBrush(CAT.tiles.find((t) => t.type === "Floor") || CAT.tiles[0]);
+  }
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
+  else init();
+})();
+</script>
+</body>
+</html>

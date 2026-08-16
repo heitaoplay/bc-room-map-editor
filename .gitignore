@@ -1,0 +1,10 @@
+# dependencies (jsdom for headless tests)
+node_modules/
+
+# unrelated project metadata
+.workbuddy/
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+*.log

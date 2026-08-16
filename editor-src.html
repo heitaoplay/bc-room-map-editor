@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>BC 地图编辑器 · Room Map Editor</title>
+<style>
+  :root {
+    --bg: #15181d; --panel: #1d222b; --panel2: #232a35; --line: #2e3744;
+    --txt: #d7dde6; --muted: #8b97a7; --accent: #e0a93b; --ok: #5fd06b; --err: #e0604f;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--txt);
+    font: 13px/1.5 -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    height: 100vh; display: flex; flex-direction: column;
+  }
+  header {
+    display: flex; align-items: center; gap: 12px; padding: 8px 14px;
+    background: var(--panel); border-bottom: 1px solid var(--line);
+  }
+  header h1 { font-size: 15px; margin: 0; font-weight: 600; }
+  header .sub { color: var(--muted); font-size: 12px; }
+  .toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-left: auto; }
+  button, select {
+    background: var(--panel2); color: var(--txt); border: 1px solid var(--line);
+    border-radius: 6px; padding: 5px 10px; cursor: pointer; font-size: 12px;
+  }
+  button:hover { border-color: var(--accent); }
+  select { cursor: default; }
+  main { flex: 1; display: flex; min-height: 0; }
+  /* left palette */
+  #paletteWrap { width: 260px; background: var(--panel); border-right: 1px solid var(--line); display: flex; flex-direction: column; }
+  .layer-toggle { display: flex; padding: 8px; gap: 6px; border-bottom: 1px solid var(--line); }
+  .layer-toggle button { flex: 1; }
+  .layer-toggle button.active { background: var(--accent); color: #1a1a1a; border-color: var(--accent); font-weight: 600; }
+  #palette { overflow-y: auto; padding: 8px; flex: 1; }
+  .pal-section { margin-bottom: 12px; }
+  .pal-title { font-weight: 600; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px; }
+  .pal-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; }
+  .pal-item {
+    position: relative; display: flex; align-items: flex-end; padding: 3px 5px; border-radius: 5px;
+    border: 1px solid transparent; cursor: pointer; font-size: 11px; color: #fff;
+    height: 42px; overflow: hidden; background-size: cover; background-position: center;
+    text-shadow: 0 1px 2px #000, 0 0 3px #000;
+  }
+  .pal-item span {
+    position: relative; z-index: 1; white-space: nowrap; overflow: hidden;
+    text-overflow: ellipsis; font-weight: 600; width: 100%;
+    background: linear-gradient(transparent, rgba(0,0,0,.55));
+    padding: 1px 3px; margin: -3px -5px; border-radius: 0 0 4px 4px;
+  }
+  .pal-item:hover { border-color: #fff; }
+  .pal-item.sel { border-color: #fff; box-shadow: 0 0 0 2px var(--accent); }
+  .pal-badge {
+    position: absolute; top: 1px; right: 1px;
+    font-size: 9px; font-weight: 700; line-height: 14px;
+    width: 15px; text-align: center; border-radius: 3px;
+    color: #111; z-index: 2; pointer-events: none;
+    box-shadow: 0 0 3px rgba(0,0,0,.7);
+  }
+  /* center grid */
+  #stage { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px; overflow: hidden; min-width: 0; min-height: 0; }
+  .zoom-bar { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+  .zoom-bar button { min-width: 30px; height: 26px; font-size: 13px; font-weight: 600; line-height: 1; padding: 0 6px; text-align: center; white-space: nowrap; }
+  #zoomLevel { color: var(--muted); font-size: 12px; min-width: 42px; text-align: center; }
+  #gridWrap { overflow: auto; max-width: 100%; max-height: 100%; margin: auto; border: 1px solid var(--line); background: #0c0e12; }
+  #grid {
+    display: grid; grid-template-columns: repeat(var(--n), var(--cell, 13px)); grid-auto-rows: var(--cell, 13px);
+    gap: 0; user-select: none;
+  }
+  .cell { position: relative; width: 100%; height: 100%; background-size: cover; background-position: center; overflow: hidden; }
+  .cell .obj { position: absolute; inset: 0; background-size: contain; background-position: center; background-repeat: no-repeat; pointer-events: none; }
+  .cell:hover { outline: 1.5px solid #fff; outline-offset: -1.5px; z-index: 1; }
+  #brushInfo { margin-top: 10px; color: var(--muted); font-size: 12px; }
+  /* right panel */
+  #right { width: 320px; background: var(--panel); border-left: 1px solid var(--line); display: flex; flex-direction: column; padding: 10px; gap: 8px; }
+  #right h2 { font-size: 12px; margin: 0; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  #output {
+    width: 100%; height: 120px; resize: vertical; background: #0c0e12; color: var(--txt);
+    border: 1px solid var(--line); border-radius: 6px; padding: 6px; font-family: ui-monospace, monospace; font-size: 11px;
+  }
+  #stats { font-size: 11px; color: var(--muted); }
+  .ok { color: var(--ok); } .err { color: var(--err); }
+  .row { display: flex; gap: 6px; align-items: center; }
+  #flash { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: var(--accent); color: #1a1a1a; padding: 6px 14px; border-radius: 16px; opacity: 0; transition: opacity .3s; font-weight: 600; }
+  .hint { font-size: 11px; color: var(--muted); }
+  label.chk { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; }
+  /* tool groups in header */
+  .tb-group { display: flex; gap: 6px; align-items: center; padding-left: 10px; margin-left: 4px; border-left: 1px solid var(--line); }
+  .tb-group button.active { background: var(--accent); color: #1a1a1a; border-color: var(--accent); font-weight: 600; }
+  .tb-group button:disabled { opacity: .4; cursor: not-allowed; }
+  /* palette search */
+  #palSearch { margin: 8px 8px 0; padding: 6px 9px; width: calc(100% - 16px); border-radius: 6px;
+    background: var(--panel2); color: var(--txt); border: 1px solid var(--line); font-size: 12px; }
+  #palSearch:focus { outline: none; border-color: var(--accent); }
+  /* coordinate readout */
+  #coords { margin-top: 8px; color: var(--muted); font-size: 12px; font-family: ui-monospace, monospace; }
+  /* drawing tool bar — sits between zoom bar and grid */
+  .tool-bar {
+    display: flex; gap: 3px; margin-bottom: 8px;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 7px;
+    padding: 4px;
+  }
+  .tool-btn {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: transparent; color: var(--muted); border: 1px solid transparent;
+    border-radius: 5px; padding: 5px 10px; cursor: pointer; font-size: 12px;
+    transition: all .15s;
+  }
+  .tool-btn:hover { color: var(--txt); background: var(--panel2); border-color: var(--line); }
+  .tool-btn.active { background: var(--accent); color: #1a1a1a; border-color: var(--accent); font-weight: 600; }
+  .tool-btn svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+  /* ===== Custom dark scrollbars ===== */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: var(--line); border-radius: 3px;
+    transition: background .2s;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: #4a5568; }
+  ::-webkit-scrollbar-corner { background: transparent; }
+
+  /* Firefox */
+  * { scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+
+  /* ===== Animations & polish ===== */
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes flashSlide {
+    from { opacity: 0; transform: translateX(-50%) translateY(12px); }
+    to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+  }
+  @keyframes selPulse {
+    0%   { box-shadow: 0 0 0 2px var(--accent); }
+    50%  { box-shadow: 0 0 0 3px rgba(224,169,59,.5), 0 0 12px rgba(224,169,59,.25); }
+    100% { box-shadow: 0 0 0 2px var(--accent); }
+  }
+
+  body { animation: fadeInUp .35s ease-out both; }
+  header { animation: fadeInUp .35s ease-out .05s both; }
+  main   { animation: fadeInUp .35s ease-out .1s both; }
+
+  button, select {
+    transition: border-color .18s, background .18s, color .18s, transform .12s;
+  }
+  button:active:not(:disabled) { transform: scale(.96); }
+
+  #flash {
+    transition: opacity .3s, transform .3s;
+    backdrop-filter: blur(6px);
+  }
+  #flash.showing {
+    animation: flashSlide .28s ease-out both;
+  }
+
+  .pal-item {
+    transition: border-color .15s, box-shadow .2s, transform .12s;
+  }
+  .pal-item:hover { transform: translateY(-1px); }
+  .pal-item.sel { animation: selPulse 1.6s ease-in-out infinite; }
+
+  .cell:hover::after {
+    content: ""; position: absolute; inset: 0;
+    background: radial-gradient(circle at center, rgba(255,255,255,.08) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  #gridWrap {
+    cursor: grab;
+    transition: border-color .2s;
+  }
+  #gridWrap.panning { cursor: grabbing; }
+  #gridWrap:active { cursor: grabbing; }
+
+  .zoom-bar button { transition: background .15s, border-color .15s; }
+  .layer-toggle button { transition: background .2s, color .2s, border-color .2s; }
+
+  /* subtle header depth */
+  header {
+    background: linear-gradient(180deg, var(--panel) 0%, rgba(29,34,43,.98) 100%);
+    box-shadow: 0 1px 0 rgba(255,255,255,.03) inset;
+  }
+
+  /* right panel textarea focus glow */
+  #output:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(224,169,59,.15);
+  }
+
+  /* stats row micro-animation */
+  #stats { transition: opacity .2s; }
+</style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1 id="appTitle">BC 地图编辑器</h1>
+      <div class="sub" id="appSub">生成可直接 <code>/mappaste</code> 的数据串 · 40×40 网格</div>
+    </div>
+    <div class="toolbar">
+      <label class="chk"><span id="modeLabel">模式</span>
+        <select id="typeSel">
+          <option value="Always">始终可见</option>
+          <option value="Online">仅在线可见</option>
+          <option value="Offline">仅离线可见</option>
+        </select>
+      </label>
+      <label class="chk"><input type="checkbox" id="fog" /> <span id="fogLabel">迷雾</span></label>
+      <div class="tb-group">
+        <button id="btnUndo" title="撤销 (Ctrl+Z)">↶ 撤销</button>
+        <button id="btnRedo" title="重做 (Ctrl+Y)">↷ 重做</button>
+      </div>
+      <button id="btnFill" title="铺满当前选中的地板/部件（未选中则橡木地板）">铺地板</button>
+      <button id="btnClear">清空</button>
+      <button id="btnExample">示例</button>
+      <button id="btnExport" title="生成 mappaste 数据串到下方文本框">生成代码</button>
+      <label class="tb-group" style="border-left:1px solid var(--line);padding-left:10px;margin-left:4px">
+        <input type="file" id="fileImport" accept=".txt,.json,.map" style="display:none" />
+        <button id="btnFileImport" title="从本地文件导入地图数据">导入文件</button>
+        <button id="btnFileExport" title="导出为 .txt 文件下载到本地">导出文件</button>
+      </label>
+      <label class="chk" style="border-left:1px solid var(--line);padding-left:10px;margin-left:4px">
+        <span id="langLabel">语言</span>
+        <select id="langSel"></select>
+      </label>
+    </div>
+  </header>
+
+  <main>
+    <div id="paletteWrap">
+      <div class="layer-toggle">
+        <button id="layerTiles" class="active">地板/墙体层</button>
+        <button id="layerObjects">物件层</button>
+      </div>
+      <input id="palSearch" placeholder="搜索部件（名称/类型/编号）…" />
+      <div id="palette"></div>
+    </div>
+
+    <div id="stage">
+      <div class="zoom-bar">
+        <button id="zoomOut" title="缩小">−</button>
+        <span id="zoomLevel">100%</span>
+        <button id="zoomIn" title="放大">+</button>
+        <button id="zoomFit" title="适应窗口">适应</button>
+      </div>
+      <div class="tool-bar" id="toolBar">
+        <button class="tool-btn active" id="toolBrush" title="笔刷 (B)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.37 2.63 14 7l-1.59-1.59a2 2 0 0 0-2.82 0L8 7l9 9 1.59-1.59a2 2 0 0 0 0-2.82L17 10l4.37-4.37a2.12 2.12 0 1 0-3-3Z"/><path d="M9 8c-2 3-4 3.5-7 4l8 10c2-1 6-5 6-7"/><path d="m14.5 17.5 4.5 4.5"/></svg><span class="t" id="toolBrush_t">笔刷</span>
+        </button>
+        <button class="tool-btn" id="toolRect" title="矩形 (R)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/></svg><span class="t" id="toolRect_t">矩形</span>
+        </button>
+        <button class="tool-btn" id="toolLine" title="直线 (L)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="19" x2="19" y2="5"/></svg><span class="t" id="toolLine_t">直线</span>
+        </button>
+        <button class="tool-btn" id="toolFill" title="填充 (F)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m19 11-8-8-8.6 8.6a2 2 0 0 0 0 2.8l5.2 5.2c.8.8 2 .8 2.8 0L19 11Z"/><path d="m5 2 5 5"/><path d="M2 13h15"/><path d="M22 20a2 2 0 1 1-4 0c0-1.6 1.7-2.4 2-4 .3 1.6 2 2.4 2 4Z"/></svg><span class="t" id="toolFill_t">填充</span>
+        </button>
+        <button class="tool-btn" id="toolEraser" title="橡皮擦 (E)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 21 5-5"/><path d="M12.5 4.5a2.12 2.12 0 0 1 3 3L8 15l-5 5h6l9-9a2.12 2.12 0 0 0-3-3Z"/></svg><span class="t" id="toolEraser_t">橡皮擦</span>
+        </button>
+      </div>
+      <div id="gridWrap"><div id="grid"></div></div>
+      <div id="brushInfo">未选择部件</div>
+      <div id="coords">—</div>
+      <div class="hint" id="stageHint">左键绘制 · 右键擦除（当前层）· 拖动连续刷 · 快捷键 B笔刷/R矩形/L直线/F填充/E橡皮擦 · Ctrl+Z撤销 Ctrl+Y重做</div>
+    </div>
+
+    <div id="right">
+      <h2 id="panelTitle">mappaste 数据串</h2>
+      <textarea id="output" placeholder="点「生成代码」自动填入，或直接粘贴已有的 mappaste 串"></textarea>
+      <div class="row">
+        <button id="btnCopy">复制</button>
+        <span id="stats"></span>
+      </div>
+      <div class="hint" id="hintImport">粘贴串到文本框后按 <b>Ctrl+V</b> 即可自动识别并加载地图。<br>把最终串贴进游戏聊天框输入 <code>/mappaste &lt;串&gt;</code> 即可铺设。<br>注意：灯光/染色特效（Effects）不在 mappaste 串内，需游戏内另设。</div>
+    </div>
+  </main>
+
+  <div id="flash"></div>
+
+  <!-- Injected by build-editor.js -->
+  <script>/*__LZSTRING__*/</script>
+  <script>/*__CATALOG__*/</script>
+  <script>/*__MAPLIB__*/</script>
+  <script>/*__ZH_LABELS__*/</script>
+  <script>/*__I18N__*/</script>
+  <script>/*__IMAGES__*/</script>
+  <script>/*__UI__*/</script>
+</body>
+</html>
