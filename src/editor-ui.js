@@ -73,9 +73,57 @@
     return null;
   }
 
+  // ---------- category tree (☰ side menu) ----------
+  // Every catalog component (tile or object) is classified into exactly one
+  // leaf category below. Leaves are grouped into 5 top-level groups. The
+  // component's own `layer` field ("tile"/"object") decides paint layer —
+  // there is no separate manual tiles/objects toggle anymore.
+  const FURNITURE_STYLES = new Set(["TableBrown", "ChairWood", "ThroneRed", "VikingChair", "Stairs", "AirConditioner", "Blank"]);
+  const BEDDING_STYLES = new Set(["BedTeal", "PillowPink", "Bed"]);
+  const LEAVES = [
+    { id: "floor.floor", top: "floor", labelKey: "cat.floor", match: (c) => c.layer === "tile" && c.type === "Floor" && c.style !== "HalfWall" },
+    { id: "floor.exterior", top: "floor", labelKey: "cat.exterior", match: (c) => c.layer === "tile" && c.type === "FloorExterior" },
+    { id: "floor.water", top: "floor", labelKey: "cat.water", match: (c) => c.layer === "tile" && c.type === "Water" },
+    { id: "wall.wall", top: "wall", labelKey: "cat.wall", match: (c) => c.layer === "tile" && (c.type === "Wall" || c.style === "HalfWall") },
+    { id: "wall.door", top: "wall", labelKey: "cat.door", match: (c) => c.type === "WallPath" },
+    { id: "wall.walldeco", top: "wall", labelKey: "cat.walldeco", match: (c) => c.type === "WallDecoration" },
+    { id: "wall.banner", top: "wall", labelKey: "cat.banners", match: (c) => c.type === "Banners" },
+    { id: "deco.obstacle", top: "deco", labelKey: "cat.obstacle", match: (c) => c.type === "FloorObstacle" },
+    { id: "deco.furniture", top: "deco", labelKey: "cat.furniture", match: (c) => c.type === "FloorDecorationThemed" || c.type === "FloorDecorationExpanding" || (c.type === "FloorDecoration" && FURNITURE_STYLES.has(c.style)) },
+    { id: "deco.bedding", top: "deco", labelKey: "cat.bedding", match: (c) => c.type === "FloorDecoration" && BEDDING_STYLES.has(c.style) },
+    { id: "deco.party", top: "deco", labelKey: "cat.party", match: (c) => c.type === "FloorDecorationParty" },
+    { id: "deco.outdoor", top: "deco", labelKey: "cat.outdoorProps", match: (c) => c.type === "FloorDecorationCamping" },
+    { id: "deco.animal", top: "deco", labelKey: "cat.animal", match: (c) => c.type === "FloorDecorationAnimal" },
+    { id: "item.gate", top: "item", labelKey: "cat.gate", match: (c) => c.type === "FloorDecoration" && (c.style === "EntryFlag" || c.style === "ExitFlag") },
+    { id: "item.key", top: "item", labelKey: "cat.key", match: (c) => c.type === "FloorDecoration" && /^Key/.test(c.style || "") },
+    { id: "item.item", top: "item", labelKey: "cat.item", match: (c) => c.type === "FloorItem" },
+    { id: "marker.number", top: "marker", labelKey: "cat.number", match: (c) => c.type === "FloorNumber" },
+    { id: "marker.letter", top: "marker", labelKey: "cat.letter", match: (c) => c.type === "FloorLetter" },
+    { id: "marker.icon", top: "marker", labelKey: "cat.icon", match: (c) => c.type === "FloorIcon" },
+  ];
+  const TOPS = [
+    { id: "floor", labelKey: "cat2.floor", subs: ["floor.floor", "floor.exterior", "floor.water"] },
+    { id: "wall", labelKey: "cat2.wall", subs: ["wall.wall", "wall.door", "wall.walldeco", "wall.banner"] },
+    { id: "deco", labelKey: "cat2.deco", subs: ["deco.obstacle", "deco.furniture", "deco.bedding", "deco.party", "deco.outdoor", "deco.animal"] },
+    { id: "item", labelKey: "cat2.item", subs: ["item.gate", "item.key", "item.item"] },
+    { id: "marker", labelKey: "cat2.marker", subs: ["marker.number", "marker.letter", "marker.icon"] },
+  ];
+  function leafDef(id) { return LEAVES.find((l) => l.id === id); }
+  function topDef(id) { return TOPS.find((t) => t.id === id); }
+  function classify(comp) {
+    for (const l of LEAVES) if (l.match(comp)) return l.id;
+    return "deco.furniture"; // safety net — should not normally hit
+  }
+  const LEAF_ITEMS = {};
+  [].concat(CAT.tiles, CAT.objects).forEach((c) => {
+    const id = classify(c);
+    (LEAF_ITEMS[id] = LEAF_ITEMS[id] || []).push(c);
+  });
+
   // ---------- state ----------
   const state = {
     layer: "tiles",
+    category: "floor.floor", // current ☰ selection: a leaf id ("floor.floor") or top id ("floor")
     tool: "brush",          // brush | rect | line | fill
     eraser: false,
     brush: null,            // { id, layer, type, style, label }
@@ -137,32 +185,13 @@
   }
 
   // ---------- palette ----------
-  function buildPaletteSource() {
-    const C = T("cat.floor"), W_ = T("cat.wall"), E = T("cat.exterior"), Wa = T("cat.water");
-    const D = T("cat.door"), K = T("cat.key"), Ob = T("cat.obstacle"), Dec = T("cat.decoration");
-    const M = T("cat.marker"), It = T("cat.item"), B = T("cat.banners"), WD = T("cat.walldeco");
-    const groups = {
-      tiles: { [C]: [], [W_]: [], [E]: [], [Wa]: [] },
-      objects: { [D]: [], [K]: [], [Ob]: [], [Dec]: [], [M]: [], [It]: [], [B]: [], [WD]: [] },
-    };
-    CAT.tiles.forEach((t) => {
-      if (t.type === "Wall" || t.style === "HalfWall") groups.tiles[W_].push(t);
-      else if (t.type === "FloorExterior") groups.tiles[E].push(t);
-      else if (t.type === "Water") groups.tiles[Wa].push(t);
-      else groups.tiles[C].push(t);
-    });
-    CAT.objects.forEach((o) => {
-      const s = o.style || "";
-      if (o.type === "WallPath") groups.objects[D].push(o);
-      else if (o.type === "FloorDecoration" && /^Key/.test(s)) groups.objects[K].push(o);
-      else if (o.type === "FloorDecoration" && (s === "EntryFlag" || s === "ExitFlag")) groups.objects[M].push(o);
-      else if (o.type === "FloorObstacle") groups.objects[Ob].push(o);
-      else if (o.type === "FloorItem") groups.objects[It].push(o);
-      else if (o.type === "Banners") groups.objects[B].push(o);
-      else if (o.type === "WallDecoration") groups.objects[WD].push(o);
-      else groups.objects[Dec].push(o);
-    });
-    return groups;
+  function componentsForCategory(catId) {
+    if (!catId) return [];
+    if (catId.indexOf(".") === -1) {
+      const top = topDef(catId);
+      return top ? [].concat.apply([], top.subs.map((s) => LEAF_ITEMS[s] || [])) : [];
+    }
+    return LEAF_ITEMS[catId] || [];
   }
 
   function matchSearch(comp) {
@@ -179,23 +208,30 @@
   function renderPalette() {
     const root = document.getElementById("palette");
     root.innerHTML = "";
-    const groups = buildPaletteSource();
-    const layerGroups = groups[state.layer]; // { categoryName: [comp, ...] }
-    const items = [].concat.apply([], Object.values(layerGroups)).filter(matchSearch);
-    const cats = {};
-    items.forEach((c) => {
-      const catName = Object.keys(layerGroups).find((k) => layerGroups[k].includes(c)) || T("cat.other");
-      (cats[catName] = cats[catName] || []).push(c);
-    });
-    Object.keys(cats).forEach((catName) => {
-      const sec = document.createElement("div"); sec.className = "pal-section";
+    let sections; // [{ label, items }]
+    if (state.search) {
+      const all = [].concat(CAT.tiles, CAT.objects).filter(matchSearch);
+      const byLeaf = {};
+      all.forEach((c) => { const lid = classify(c); (byLeaf[lid] = byLeaf[lid] || []).push(c); });
+      sections = Object.keys(byLeaf).map((lid) => ({ label: T(leafDef(lid).labelKey), items: byLeaf[lid] }));
+    } else if (state.category.indexOf(".") === -1) {
+      const top = topDef(state.category);
+      sections = (top ? top.subs : []).map((sid) => ({ label: T(leafDef(sid).labelKey), items: LEAF_ITEMS[sid] || [] })).filter((s) => s.items.length);
+    } else {
+      const leaf = leafDef(state.category);
+      sections = leaf ? [{ label: T(leaf.labelKey), items: LEAF_ITEMS[state.category] || [] }] : [];
+    }
+    let total = 0;
+    sections.forEach((sec) => {
+      total += sec.items.length;
+      const secEl = document.createElement("div"); secEl.className = "pal-section";
       const h = document.createElement("div"); h.className = "pal-title";
-      h.textContent = catName + "  (" + cats[catName].length + ")"; sec.appendChild(h);
+      h.textContent = sec.label + "  (" + sec.items.length + ")"; secEl.appendChild(h);
       const grid = document.createElement("div"); grid.className = "pal-grid";
-      cats[catName].forEach((comp) => {
+      sec.items.forEach((comp) => {
         const el = document.createElement("div"); el.className = "pal-item";
         el.title = zh(comp) + "  (" + comp.type + ":" + comp.style + "  #" + comp.id + ")";
-        paintBg(el, comp, state.layer === "tiles");
+        paintBg(el, comp);
         const b = badgeFor(comp);
         if (b) {
           const badge = document.createElement("span");
@@ -203,20 +239,79 @@
           el.appendChild(badge);
         }
         const lbl = document.createElement("span"); lbl.textContent = zh(comp); el.appendChild(lbl);
-        if (state.brush && state.brush.id === comp.id && state.brush.layer === state.layer) el.classList.add("sel");
+        const compLayer = comp.layer === "tile" ? "tiles" : "objects";
+        if (state.brush && state.brush.id === comp.id && state.brush.layer === compLayer) el.classList.add("sel");
         el.addEventListener("click", () => selectBrush(comp));
         grid.appendChild(el);
       });
-      sec.appendChild(grid); root.appendChild(sec);
+      secEl.appendChild(grid); root.appendChild(secEl);
     });
-    if (!items.length) root.innerHTML = '<div class="hint" style="padding:10px">' + T("pal.empty") + '</div>';
+    if (!total) root.innerHTML = '<div class="hint" style="padding:10px">' + T("pal.empty") + '</div>';
   }
 
+  // Selecting any part in the palette immediately arms it as the brush and
+  // switches the active tool to "brush" (dropping eraser/rect/line/fill),
+  // so the very next click on the stage paints it.
   function selectBrush(comp) {
-    state.brush = { id: comp.id, layer: state.layer, type: comp.type, style: comp.style, comp };
+    const layer = comp.layer === "tile" ? "tiles" : "objects";
+    state.tool = "brush"; state.eraser = false;
+    ["brush", "rect", "line", "fill"].forEach((t) => {
+      const b = document.getElementById("tool" + t[0].toUpperCase() + t.slice(1));
+      if (b) b.classList.toggle("active", t === "brush");
+    });
+    const er = document.getElementById("toolEraser"); if (er) er.classList.remove("active");
+    state.brush = { id: comp.id, layer, type: comp.type, style: comp.style, comp };
+    state.layer = layer;
     renderPalette();
     updateBrushInfo();
   }
+
+  // ---------- ☰ category menu ----------
+  function renderCatMenu() {
+    const root = document.getElementById("catMenu");
+    if (!root) return;
+    root.innerHTML = "";
+    TOPS.forEach((top) => {
+      const g = document.createElement("div"); g.className = "cat-group";
+      const title = document.createElement("div");
+      title.className = "cat-group-title" + (state.category === top.id ? " active" : "");
+      title.textContent = T(top.labelKey);
+      title.addEventListener("click", () => selectCategory(top.id));
+      g.appendChild(title);
+      const subList = document.createElement("div"); subList.className = "cat-sub-list";
+      top.subs.forEach((sid) => {
+        const leaf = leafDef(sid);
+        const b = document.createElement("button"); b.type = "button";
+        b.className = "cat-sub-item" + (state.category === sid ? " active" : "");
+        b.textContent = T(leaf.labelKey);
+        b.addEventListener("click", (e) => { e.stopPropagation(); selectCategory(sid); });
+        subList.appendChild(b);
+      });
+      g.appendChild(subList); root.appendChild(g);
+    });
+  }
+  function updateCurCatLabel() {
+    const el = document.getElementById("curCatLabel");
+    if (!el) return;
+    if (state.category.indexOf(".") === -1) {
+      const top = topDef(state.category);
+      el.textContent = top ? T(top.labelKey) : "";
+    } else {
+      const leaf = leafDef(state.category);
+      if (!leaf) { el.textContent = ""; return; }
+      el.textContent = T(topDef(leaf.top).labelKey) + " › " + T(leaf.labelKey);
+    }
+  }
+  function selectCategory(catId) {
+    state.category = catId;
+    state.search = ""; const ps = document.getElementById("palSearch"); if (ps) ps.value = "";
+    closeCatMenu();
+    updateCurCatLabel();
+    renderPalette();
+  }
+  function openCatMenu() { const m = document.getElementById("catMenu"); if (!m) return; renderCatMenu(); m.hidden = false; }
+  function closeCatMenu() { const m = document.getElementById("catMenu"); if (m) m.hidden = true; }
+  function toggleCatMenu() { const m = document.getElementById("catMenu"); if (!m) return; if (m.hidden) openCatMenu(); else closeCatMenu(); }
 
   function updateBrushInfo() {
     const el = document.getElementById("brushInfo");
@@ -543,14 +638,6 @@
     if (on) ["brush", "rect", "line", "fill"].forEach((t) => document.getElementById("tool" + t[0].toUpperCase() + t.slice(1)).classList.remove("active"));
     updateBrushInfo();
   }
-  function setLayer(layer) {
-    state.layer = layer;
-    document.getElementById("layerTiles").classList.toggle("active", layer === "tiles");
-    document.getElementById("layerObjects").classList.toggle("active", layer === "objects");
-    state.brush = null;
-    renderPalette(); updateBrushInfo();
-  }
-
   // ---------- keyboard ----------
   function onKey(e) {
     const tag = (e.target && e.target.tagName) || "";
@@ -567,7 +654,7 @@
     else if (k === "e") setEraser(!state.eraser);
     else if (k === "+" || k === "=") setZoom(state.zoom + ZOOM_STEP);
     else if (k === "-" || k === "_") setZoom(state.zoom - ZOOM_STEP);
-    else if (k === "escape") { state.brush = null; renderPalette(); updateBrushInfo(); }
+    else if (k === "escape") { state.brush = null; closeCatMenu(); renderPalette(); updateBrushInfo(); }
   }
 
   // ---------- i18n glue ----------
@@ -577,6 +664,9 @@
   function initLangSelect() {
     const sel = document.getElementById("langSel");
     if (sel) {
+      const optAuto = document.createElement("option");
+      optAuto.value = "auto"; optAuto.textContent = I18N.localeName("auto");
+      sel.appendChild(optAuto);
       I18N.available().forEach((loc) => {
         const opt = document.createElement("option");
         opt.value = loc; opt.textContent = I18N.localeName(loc);
@@ -609,9 +699,9 @@
     setText("btnExport", T("genCode")); setAttr("btnExport", "title", T("genCode"));
     setText("btnFileImport", T("importFile")); setAttr("btnFileImport", "title", T("importFile"));
     setText("btnFileExport", T("exportFile")); setAttr("btnFileExport", "title", T("exportFile"));
-    // layer toggles
-    setText("layerTiles", T("layer.tiles"));
-    setText("layerObjects", T("layer.objects"));
+    // ☰ category menu + current-category label
+    updateCurCatLabel();
+    renderCatMenu();
     // search placeholder
     const ps = document.getElementById("palSearch"); if (ps) ps.placeholder = T("search.ph");
     // drawing tools
@@ -644,8 +734,14 @@
     initLangSelect();
     applyLocale();
 
-    document.getElementById("layerTiles").addEventListener("click", () => setLayer("tiles"));
-    document.getElementById("layerObjects").addEventListener("click", () => setLayer("objects"));
+    updateCurCatLabel();
+    document.getElementById("catMenuBtn").addEventListener("click", (e) => { e.stopPropagation(); toggleCatMenu(); });
+    document.addEventListener("click", (e) => {
+      const menu = document.getElementById("catMenu"), btn = document.getElementById("catMenuBtn");
+      if (!menu || menu.hidden) return;
+      if (menu.contains(e.target) || (btn && btn.contains(e.target))) return;
+      closeCatMenu();
+    });
     document.getElementById("fog").addEventListener("change", (e) => { state.fog = e.target.checked; });
     document.getElementById("typeSel").addEventListener("change", (e) => { state.type = e.target.value; });
     document.getElementById("btnClear").addEventListener("click", clearMap);

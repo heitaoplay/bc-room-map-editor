@@ -4,8 +4,9 @@
   "description": "BC (Bondage Club) room-map string generator + visual editor. Build mappaste-compatible maps with a 40x40 grid, layers, i18n UI, and zero mods.",
   "private": true,
   "scripts": {
-    "build": "node build-editor.js",
-    "test": "node test-editor.js"
+    "build": "node scripts/build-editor.js",
+    "test": "node tests/test-editor.js",
+    "example": "node examples/example.js"
   },
   "devDependencies": {
     "jsdom": "^24.0.0"

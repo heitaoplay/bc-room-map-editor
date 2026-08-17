@@ -31,9 +31,20 @@
   main { flex: 1; display: flex; min-height: 0; }
   /* left palette */
   #paletteWrap { width: 260px; background: var(--panel); border-right: 1px solid var(--line); display: flex; flex-direction: column; }
-  .layer-toggle { display: flex; padding: 8px; gap: 6px; border-bottom: 1px solid var(--line); }
-  .layer-toggle button { flex: 1; }
-  .layer-toggle button.active { background: var(--accent); color: #1a1a1a; border-color: var(--accent); font-weight: 600; }
+  .layer-toggle { display: flex; align-items: center; padding: 8px; gap: 8px; border-bottom: 1px solid var(--line); }
+  #catMenuBtn { flex: 0 0 auto; font-size: 16px; line-height: 1; padding: 5px 10px; }
+  #curCatLabel { flex: 1; min-width: 0; font-size: 12px; font-weight: 600; color: var(--txt); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #paletteWrap { position: relative; }
+  .cat-menu { position: absolute; top: 42px; left: 8px; right: 8px; z-index: 30; background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 10px 28px rgba(0,0,0,.5); padding: 8px; max-height: 65vh; overflow-y: auto; }
+  .cat-menu[hidden] { display: none; }
+  .cat-group { margin-bottom: 8px; }
+  .cat-group:last-child { margin-bottom: 0; }
+  .cat-group-title { font-weight: 700; font-size: 12px; padding: 5px 7px; border-radius: 5px; cursor: pointer; color: var(--accent); }
+  .cat-group-title:hover { background: var(--panel); }
+  .cat-group-title.active { background: var(--accent); color: #1a1a1a; }
+  .cat-sub-list { display: flex; flex-wrap: wrap; gap: 4px; padding: 5px 2px 2px; }
+  .cat-sub-item { font-size: 11px; padding: 4px 9px; border-radius: 12px; }
+  .cat-sub-item.active { background: var(--accent); color: #1a1a1a; border-color: var(--accent); font-weight: 600; }
   #palette { overflow-y: auto; padding: 8px; flex: 1; }
   .pal-section { margin-bottom: 12px; }
   .pal-title { font-weight: 600; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px; }
@@ -177,7 +188,7 @@
   #gridWrap:active { cursor: grabbing; }
 
   .zoom-bar button { transition: background .15s, border-color .15s; }
-  .layer-toggle button { transition: background .2s, color .2s, border-color .2s; }
+  .cat-group-title, .cat-sub-item { transition: background .2s, color .2s, border-color .2s; }
 
   /* subtle header depth */
   header {
@@ -234,9 +245,10 @@
   <main>
     <div id="paletteWrap">
       <div class="layer-toggle">
-        <button id="layerTiles" class="active">地板/墙体层</button>
-        <button id="layerObjects">物件层</button>
+        <button id="catMenuBtn" title="分类">☰</button>
+        <span id="curCatLabel">地板</span>
       </div>
+      <div id="catMenu" class="cat-menu" hidden></div>
       <input id="palSearch" placeholder="搜索部件（名称/类型/编号）…" />
       <div id="palette"></div>
     </div>
@@ -1191,7 +1203,7 @@ window.MAP_ZH_LABELS = {
   const LOCALE_NAMES = {
     cn: "简体中文", tw: "繁體中文", en: "English",
     de: "Deutsch", fr: "Français", ru: "Русский", ua: "Українська",
-    auto: "自动 (Auto)",
+    auto: "AUTO",
   };
 
   const DICT = {
@@ -1228,9 +1240,23 @@ window.MAP_ZH_LABELS = {
       "cat.decoration": "装饰",
       "cat.marker": "标记",
       "cat.item": "道具",
-      "cat.banners": "旗",
+      "cat.banners": "旗帜",
       "cat.walldeco": "墙面装饰",
       "cat.other": "其他",
+      "cat2.floor": "地板",
+      "cat2.wall": "墙壁",
+      "cat2.deco": "装饰",
+      "cat2.item": "道具",
+      "cat2.marker": "标记",
+      "cat.furniture": "家具",
+      "cat.bedding": "寝具",
+      "cat.party": "派对道具",
+      "cat.outdoorProps": "户外道具",
+      "cat.animal": "动物",
+      "cat.gate": "出入口",
+      "cat.number": "数字",
+      "cat.letter": "英文",
+      "cat.icon": "图示",
       "pal.empty": "无匹配部件",
       "tool.brush": "笔刷",
       "tool.rect": "矩形",
@@ -1304,9 +1330,23 @@ window.MAP_ZH_LABELS = {
       "cat.decoration": "裝飾",
       "cat.marker": "標記",
       "cat.item": "道具",
-      "cat.banners": "旗",
+      "cat.banners": "旗幟",
       "cat.walldeco": "牆面裝飾",
       "cat.other": "其他",
+      "cat2.floor": "地板",
+      "cat2.wall": "牆壁",
+      "cat2.deco": "裝飾",
+      "cat2.item": "道具",
+      "cat2.marker": "標記",
+      "cat.furniture": "家具",
+      "cat.bedding": "寢具",
+      "cat.party": "派對道具",
+      "cat.outdoorProps": "戶外道具",
+      "cat.animal": "動物",
+      "cat.gate": "出入口",
+      "cat.number": "數字",
+      "cat.letter": "英文",
+      "cat.icon": "圖示",
       "pal.empty": "無匹配部件",
       "tool.brush": "筆刷",
       "tool.rect": "矩形",
@@ -1383,6 +1423,20 @@ window.MAP_ZH_LABELS = {
       "cat.banners": "Banners",
       "cat.walldeco": "Wall decor",
       "cat.other": "Other",
+      "cat2.floor": "Floor",
+      "cat2.wall": "Wall",
+      "cat2.deco": "Decoration",
+      "cat2.item": "Props",
+      "cat2.marker": "Marker",
+      "cat.furniture": "Furniture",
+      "cat.bedding": "Bedding",
+      "cat.party": "Party",
+      "cat.outdoorProps": "Outdoor",
+      "cat.animal": "Animal",
+      "cat.gate": "Entry/Exit",
+      "cat.number": "Number",
+      "cat.letter": "Letter",
+      "cat.icon": "Icon",
       "pal.empty": "No matching parts",
       "tool.brush": "Brush",
       "tool.rect": "Rectangle",
@@ -1459,6 +1513,20 @@ window.MAP_ZH_LABELS = {
       "cat.banners": "Banner",
       "cat.walldeco": "Wanddeko",
       "cat.other": "Sonstiges",
+      "cat2.floor": "Boden",
+      "cat2.wall": "Wand",
+      "cat2.deco": "Dekoration",
+      "cat2.item": "Requisiten",
+      "cat2.marker": "Markierung",
+      "cat.furniture": "Möbel",
+      "cat.bedding": "Bettwäsche",
+      "cat.party": "Party",
+      "cat.outdoorProps": "Außenbereich",
+      "cat.animal": "Tier",
+      "cat.gate": "Ein-/Ausgang",
+      "cat.number": "Zahl",
+      "cat.letter": "Buchstabe",
+      "cat.icon": "Symbol",
       "pal.empty": "Keine passenden Teile",
       "tool.brush": "Pinsel",
       "tool.rect": "Rechteck",
@@ -1535,6 +1603,20 @@ window.MAP_ZH_LABELS = {
       "cat.banners": "Bannières",
       "cat.walldeco": "Déco murale",
       "cat.other": "Autre",
+      "cat2.floor": "Sol",
+      "cat2.wall": "Mur",
+      "cat2.deco": "Décoration",
+      "cat2.item": "Accessoires",
+      "cat2.marker": "Marqueur",
+      "cat.furniture": "Meubles",
+      "cat.bedding": "Literie",
+      "cat.party": "Fête",
+      "cat.outdoorProps": "Extérieur",
+      "cat.animal": "Animal",
+      "cat.gate": "Entrée/Sortie",
+      "cat.number": "Chiffre",
+      "cat.letter": "Lettre",
+      "cat.icon": "Icône",
       "pal.empty": "Aucune pièce correspondante",
       "tool.brush": "Pinceau",
       "tool.rect": "Rectangle",
@@ -1611,6 +1693,20 @@ window.MAP_ZH_LABELS = {
       "cat.banners": "Флажки",
       "cat.walldeco": "Декор стены",
       "cat.other": "Прочее",
+      "cat2.floor": "Пол",
+      "cat2.wall": "Стена",
+      "cat2.deco": "Декор",
+      "cat2.item": "Реквизит",
+      "cat2.marker": "Метка",
+      "cat.furniture": "Мебель",
+      "cat.bedding": "Постельное бельё",
+      "cat.party": "Вечеринка",
+      "cat.outdoorProps": "На улице",
+      "cat.animal": "Животное",
+      "cat.gate": "Вход/выход",
+      "cat.number": "Цифра",
+      "cat.letter": "Буква",
+      "cat.icon": "Значок",
       "pal.empty": "Нет подходящих деталей",
       "tool.brush": "Кисть",
       "tool.rect": "Прямоугольник",
@@ -1687,6 +1783,20 @@ window.MAP_ZH_LABELS = {
       "cat.banners": "Прапори",
       "cat.walldeco": "Декор стіни",
       "cat.other": "Інше",
+      "cat2.floor": "Підлога",
+      "cat2.wall": "Стіна",
+      "cat2.deco": "Декор",
+      "cat2.item": "Реквізит",
+      "cat2.marker": "Мітка",
+      "cat.furniture": "Меблі",
+      "cat.bedding": "Постільна білизна",
+      "cat.party": "Вечірка",
+      "cat.outdoorProps": "Надворі",
+      "cat.animal": "Тварина",
+      "cat.gate": "Вхід/вихід",
+      "cat.number": "Цифра",
+      "cat.letter": "Літера",
+      "cat.icon": "Значок",
       "pal.empty": "Немає відповідних деталей",
       "tool.brush": "Пензель",
       "tool.rect": "Прямокутник",
@@ -1862,9 +1972,57 @@ window.MAP_ZH_LABELS = {
     return null;
   }
 
+  // ---------- category tree (☰ side menu) ----------
+  // Every catalog component (tile or object) is classified into exactly one
+  // leaf category below. Leaves are grouped into 5 top-level groups. The
+  // component's own `layer` field ("tile"/"object") decides paint layer —
+  // there is no separate manual tiles/objects toggle anymore.
+  const FURNITURE_STYLES = new Set(["TableBrown", "ChairWood", "ThroneRed", "VikingChair", "Stairs", "AirConditioner", "Blank"]);
+  const BEDDING_STYLES = new Set(["BedTeal", "PillowPink", "Bed"]);
+  const LEAVES = [
+    { id: "floor.floor", top: "floor", labelKey: "cat.floor", match: (c) => c.layer === "tile" && c.type === "Floor" && c.style !== "HalfWall" },
+    { id: "floor.exterior", top: "floor", labelKey: "cat.exterior", match: (c) => c.layer === "tile" && c.type === "FloorExterior" },
+    { id: "floor.water", top: "floor", labelKey: "cat.water", match: (c) => c.layer === "tile" && c.type === "Water" },
+    { id: "wall.wall", top: "wall", labelKey: "cat.wall", match: (c) => c.layer === "tile" && (c.type === "Wall" || c.style === "HalfWall") },
+    { id: "wall.door", top: "wall", labelKey: "cat.door", match: (c) => c.type === "WallPath" },
+    { id: "wall.walldeco", top: "wall", labelKey: "cat.walldeco", match: (c) => c.type === "WallDecoration" },
+    { id: "wall.banner", top: "wall", labelKey: "cat.banners", match: (c) => c.type === "Banners" },
+    { id: "deco.obstacle", top: "deco", labelKey: "cat.obstacle", match: (c) => c.type === "FloorObstacle" },
+    { id: "deco.furniture", top: "deco", labelKey: "cat.furniture", match: (c) => c.type === "FloorDecorationThemed" || c.type === "FloorDecorationExpanding" || (c.type === "FloorDecoration" && FURNITURE_STYLES.has(c.style)) },
+    { id: "deco.bedding", top: "deco", labelKey: "cat.bedding", match: (c) => c.type === "FloorDecoration" && BEDDING_STYLES.has(c.style) },
+    { id: "deco.party", top: "deco", labelKey: "cat.party", match: (c) => c.type === "FloorDecorationParty" },
+    { id: "deco.outdoor", top: "deco", labelKey: "cat.outdoorProps", match: (c) => c.type === "FloorDecorationCamping" },
+    { id: "deco.animal", top: "deco", labelKey: "cat.animal", match: (c) => c.type === "FloorDecorationAnimal" },
+    { id: "item.gate", top: "item", labelKey: "cat.gate", match: (c) => c.type === "FloorDecoration" && (c.style === "EntryFlag" || c.style === "ExitFlag") },
+    { id: "item.key", top: "item", labelKey: "cat.key", match: (c) => c.type === "FloorDecoration" && /^Key/.test(c.style || "") },
+    { id: "item.item", top: "item", labelKey: "cat.item", match: (c) => c.type === "FloorItem" },
+    { id: "marker.number", top: "marker", labelKey: "cat.number", match: (c) => c.type === "FloorNumber" },
+    { id: "marker.letter", top: "marker", labelKey: "cat.letter", match: (c) => c.type === "FloorLetter" },
+    { id: "marker.icon", top: "marker", labelKey: "cat.icon", match: (c) => c.type === "FloorIcon" },
+  ];
+  const TOPS = [
+    { id: "floor", labelKey: "cat2.floor", subs: ["floor.floor", "floor.exterior", "floor.water"] },
+    { id: "wall", labelKey: "cat2.wall", subs: ["wall.wall", "wall.door", "wall.walldeco", "wall.banner"] },
+    { id: "deco", labelKey: "cat2.deco", subs: ["deco.obstacle", "deco.furniture", "deco.bedding", "deco.party", "deco.outdoor", "deco.animal"] },
+    { id: "item", labelKey: "cat2.item", subs: ["item.gate", "item.key", "item.item"] },
+    { id: "marker", labelKey: "cat2.marker", subs: ["marker.number", "marker.letter", "marker.icon"] },
+  ];
+  function leafDef(id) { return LEAVES.find((l) => l.id === id); }
+  function topDef(id) { return TOPS.find((t) => t.id === id); }
+  function classify(comp) {
+    for (const l of LEAVES) if (l.match(comp)) return l.id;
+    return "deco.furniture"; // safety net — should not normally hit
+  }
+  const LEAF_ITEMS = {};
+  [].concat(CAT.tiles, CAT.objects).forEach((c) => {
+    const id = classify(c);
+    (LEAF_ITEMS[id] = LEAF_ITEMS[id] || []).push(c);
+  });
+
   // ---------- state ----------
   const state = {
     layer: "tiles",
+    category: "floor.floor", // current ☰ selection: a leaf id ("floor.floor") or top id ("floor")
     tool: "brush",          // brush | rect | line | fill
     eraser: false,
     brush: null,            // { id, layer, type, style, label }
@@ -1926,32 +2084,13 @@ window.MAP_ZH_LABELS = {
   }
 
   // ---------- palette ----------
-  function buildPaletteSource() {
-    const C = T("cat.floor"), W_ = T("cat.wall"), E = T("cat.exterior"), Wa = T("cat.water");
-    const D = T("cat.door"), K = T("cat.key"), Ob = T("cat.obstacle"), Dec = T("cat.decoration");
-    const M = T("cat.marker"), It = T("cat.item"), B = T("cat.banners"), WD = T("cat.walldeco");
-    const groups = {
-      tiles: { [C]: [], [W_]: [], [E]: [], [Wa]: [] },
-      objects: { [D]: [], [K]: [], [Ob]: [], [Dec]: [], [M]: [], [It]: [], [B]: [], [WD]: [] },
-    };
-    CAT.tiles.forEach((t) => {
-      if (t.type === "Wall" || t.style === "HalfWall") groups.tiles[W_].push(t);
-      else if (t.type === "FloorExterior") groups.tiles[E].push(t);
-      else if (t.type === "Water") groups.tiles[Wa].push(t);
-      else groups.tiles[C].push(t);
-    });
-    CAT.objects.forEach((o) => {
-      const s = o.style || "";
-      if (o.type === "WallPath") groups.objects[D].push(o);
-      else if (o.type === "FloorDecoration" && /^Key/.test(s)) groups.objects[K].push(o);
-      else if (o.type === "FloorDecoration" && (s === "EntryFlag" || s === "ExitFlag")) groups.objects[M].push(o);
-      else if (o.type === "FloorObstacle") groups.objects[Ob].push(o);
-      else if (o.type === "FloorItem") groups.objects[It].push(o);
-      else if (o.type === "Banners") groups.objects[B].push(o);
-      else if (o.type === "WallDecoration") groups.objects[WD].push(o);
-      else groups.objects[Dec].push(o);
-    });
-    return groups;
+  function componentsForCategory(catId) {
+    if (!catId) return [];
+    if (catId.indexOf(".") === -1) {
+      const top = topDef(catId);
+      return top ? [].concat.apply([], top.subs.map((s) => LEAF_ITEMS[s] || [])) : [];
+    }
+    return LEAF_ITEMS[catId] || [];
   }
 
   function matchSearch(comp) {
@@ -1968,23 +2107,30 @@ window.MAP_ZH_LABELS = {
   function renderPalette() {
     const root = document.getElementById("palette");
     root.innerHTML = "";
-    const groups = buildPaletteSource();
-    const layerGroups = groups[state.layer]; // { categoryName: [comp, ...] }
-    const items = [].concat.apply([], Object.values(layerGroups)).filter(matchSearch);
-    const cats = {};
-    items.forEach((c) => {
-      const catName = Object.keys(layerGroups).find((k) => layerGroups[k].includes(c)) || T("cat.other");
-      (cats[catName] = cats[catName] || []).push(c);
-    });
-    Object.keys(cats).forEach((catName) => {
-      const sec = document.createElement("div"); sec.className = "pal-section";
+    let sections; // [{ label, items }]
+    if (state.search) {
+      const all = [].concat(CAT.tiles, CAT.objects).filter(matchSearch);
+      const byLeaf = {};
+      all.forEach((c) => { const lid = classify(c); (byLeaf[lid] = byLeaf[lid] || []).push(c); });
+      sections = Object.keys(byLeaf).map((lid) => ({ label: T(leafDef(lid).labelKey), items: byLeaf[lid] }));
+    } else if (state.category.indexOf(".") === -1) {
+      const top = topDef(state.category);
+      sections = (top ? top.subs : []).map((sid) => ({ label: T(leafDef(sid).labelKey), items: LEAF_ITEMS[sid] || [] })).filter((s) => s.items.length);
+    } else {
+      const leaf = leafDef(state.category);
+      sections = leaf ? [{ label: T(leaf.labelKey), items: LEAF_ITEMS[state.category] || [] }] : [];
+    }
+    let total = 0;
+    sections.forEach((sec) => {
+      total += sec.items.length;
+      const secEl = document.createElement("div"); secEl.className = "pal-section";
       const h = document.createElement("div"); h.className = "pal-title";
-      h.textContent = catName + "  (" + cats[catName].length + ")"; sec.appendChild(h);
+      h.textContent = sec.label + "  (" + sec.items.length + ")"; secEl.appendChild(h);
       const grid = document.createElement("div"); grid.className = "pal-grid";
-      cats[catName].forEach((comp) => {
+      sec.items.forEach((comp) => {
         const el = document.createElement("div"); el.className = "pal-item";
         el.title = zh(comp) + "  (" + comp.type + ":" + comp.style + "  #" + comp.id + ")";
-        paintBg(el, comp, state.layer === "tiles");
+        paintBg(el, comp);
         const b = badgeFor(comp);
         if (b) {
           const badge = document.createElement("span");
@@ -1992,20 +2138,79 @@ window.MAP_ZH_LABELS = {
           el.appendChild(badge);
         }
         const lbl = document.createElement("span"); lbl.textContent = zh(comp); el.appendChild(lbl);
-        if (state.brush && state.brush.id === comp.id && state.brush.layer === state.layer) el.classList.add("sel");
+        const compLayer = comp.layer === "tile" ? "tiles" : "objects";
+        if (state.brush && state.brush.id === comp.id && state.brush.layer === compLayer) el.classList.add("sel");
         el.addEventListener("click", () => selectBrush(comp));
         grid.appendChild(el);
       });
-      sec.appendChild(grid); root.appendChild(sec);
+      secEl.appendChild(grid); root.appendChild(secEl);
     });
-    if (!items.length) root.innerHTML = '<div class="hint" style="padding:10px">' + T("pal.empty") + '</div>';
+    if (!total) root.innerHTML = '<div class="hint" style="padding:10px">' + T("pal.empty") + '</div>';
   }
 
+  // Selecting any part in the palette immediately arms it as the brush and
+  // switches the active tool to "brush" (dropping eraser/rect/line/fill),
+  // so the very next click on the stage paints it.
   function selectBrush(comp) {
-    state.brush = { id: comp.id, layer: state.layer, type: comp.type, style: comp.style, comp };
+    const layer = comp.layer === "tile" ? "tiles" : "objects";
+    state.tool = "brush"; state.eraser = false;
+    ["brush", "rect", "line", "fill"].forEach((t) => {
+      const b = document.getElementById("tool" + t[0].toUpperCase() + t.slice(1));
+      if (b) b.classList.toggle("active", t === "brush");
+    });
+    const er = document.getElementById("toolEraser"); if (er) er.classList.remove("active");
+    state.brush = { id: comp.id, layer, type: comp.type, style: comp.style, comp };
+    state.layer = layer;
     renderPalette();
     updateBrushInfo();
   }
+
+  // ---------- ☰ category menu ----------
+  function renderCatMenu() {
+    const root = document.getElementById("catMenu");
+    if (!root) return;
+    root.innerHTML = "";
+    TOPS.forEach((top) => {
+      const g = document.createElement("div"); g.className = "cat-group";
+      const title = document.createElement("div");
+      title.className = "cat-group-title" + (state.category === top.id ? " active" : "");
+      title.textContent = T(top.labelKey);
+      title.addEventListener("click", () => selectCategory(top.id));
+      g.appendChild(title);
+      const subList = document.createElement("div"); subList.className = "cat-sub-list";
+      top.subs.forEach((sid) => {
+        const leaf = leafDef(sid);
+        const b = document.createElement("button"); b.type = "button";
+        b.className = "cat-sub-item" + (state.category === sid ? " active" : "");
+        b.textContent = T(leaf.labelKey);
+        b.addEventListener("click", (e) => { e.stopPropagation(); selectCategory(sid); });
+        subList.appendChild(b);
+      });
+      g.appendChild(subList); root.appendChild(g);
+    });
+  }
+  function updateCurCatLabel() {
+    const el = document.getElementById("curCatLabel");
+    if (!el) return;
+    if (state.category.indexOf(".") === -1) {
+      const top = topDef(state.category);
+      el.textContent = top ? T(top.labelKey) : "";
+    } else {
+      const leaf = leafDef(state.category);
+      if (!leaf) { el.textContent = ""; return; }
+      el.textContent = T(topDef(leaf.top).labelKey) + " › " + T(leaf.labelKey);
+    }
+  }
+  function selectCategory(catId) {
+    state.category = catId;
+    state.search = ""; const ps = document.getElementById("palSearch"); if (ps) ps.value = "";
+    closeCatMenu();
+    updateCurCatLabel();
+    renderPalette();
+  }
+  function openCatMenu() { const m = document.getElementById("catMenu"); if (!m) return; renderCatMenu(); m.hidden = false; }
+  function closeCatMenu() { const m = document.getElementById("catMenu"); if (m) m.hidden = true; }
+  function toggleCatMenu() { const m = document.getElementById("catMenu"); if (!m) return; if (m.hidden) openCatMenu(); else closeCatMenu(); }
 
   function updateBrushInfo() {
     const el = document.getElementById("brushInfo");
@@ -2332,14 +2537,6 @@ window.MAP_ZH_LABELS = {
     if (on) ["brush", "rect", "line", "fill"].forEach((t) => document.getElementById("tool" + t[0].toUpperCase() + t.slice(1)).classList.remove("active"));
     updateBrushInfo();
   }
-  function setLayer(layer) {
-    state.layer = layer;
-    document.getElementById("layerTiles").classList.toggle("active", layer === "tiles");
-    document.getElementById("layerObjects").classList.toggle("active", layer === "objects");
-    state.brush = null;
-    renderPalette(); updateBrushInfo();
-  }
-
   // ---------- keyboard ----------
   function onKey(e) {
     const tag = (e.target && e.target.tagName) || "";
@@ -2356,7 +2553,7 @@ window.MAP_ZH_LABELS = {
     else if (k === "e") setEraser(!state.eraser);
     else if (k === "+" || k === "=") setZoom(state.zoom + ZOOM_STEP);
     else if (k === "-" || k === "_") setZoom(state.zoom - ZOOM_STEP);
-    else if (k === "escape") { state.brush = null; renderPalette(); updateBrushInfo(); }
+    else if (k === "escape") { state.brush = null; closeCatMenu(); renderPalette(); updateBrushInfo(); }
   }
 
   // ---------- i18n glue ----------
@@ -2366,6 +2563,9 @@ window.MAP_ZH_LABELS = {
   function initLangSelect() {
     const sel = document.getElementById("langSel");
     if (sel) {
+      const optAuto = document.createElement("option");
+      optAuto.value = "auto"; optAuto.textContent = I18N.localeName("auto");
+      sel.appendChild(optAuto);
       I18N.available().forEach((loc) => {
         const opt = document.createElement("option");
         opt.value = loc; opt.textContent = I18N.localeName(loc);
@@ -2398,9 +2598,9 @@ window.MAP_ZH_LABELS = {
     setText("btnExport", T("genCode")); setAttr("btnExport", "title", T("genCode"));
     setText("btnFileImport", T("importFile")); setAttr("btnFileImport", "title", T("importFile"));
     setText("btnFileExport", T("exportFile")); setAttr("btnFileExport", "title", T("exportFile"));
-    // layer toggles
-    setText("layerTiles", T("layer.tiles"));
-    setText("layerObjects", T("layer.objects"));
+    // ☰ category menu + current-category label
+    updateCurCatLabel();
+    renderCatMenu();
     // search placeholder
     const ps = document.getElementById("palSearch"); if (ps) ps.placeholder = T("search.ph");
     // drawing tools
@@ -2433,8 +2633,14 @@ window.MAP_ZH_LABELS = {
     initLangSelect();
     applyLocale();
 
-    document.getElementById("layerTiles").addEventListener("click", () => setLayer("tiles"));
-    document.getElementById("layerObjects").addEventListener("click", () => setLayer("objects"));
+    updateCurCatLabel();
+    document.getElementById("catMenuBtn").addEventListener("click", (e) => { e.stopPropagation(); toggleCatMenu(); });
+    document.addEventListener("click", (e) => {
+      const menu = document.getElementById("catMenu"), btn = document.getElementById("catMenuBtn");
+      if (!menu || menu.hidden) return;
+      if (menu.contains(e.target) || (btn && btn.contains(e.target))) return;
+      closeCatMenu();
+    });
     document.getElementById("fog").addEventListener("change", (e) => { state.fog = e.target.checked; });
     document.getElementById("typeSel").addEventListener("change", (e) => { state.type = e.target.value; });
     document.getElementById("btnClear").addEventListener("click", clearMap);
