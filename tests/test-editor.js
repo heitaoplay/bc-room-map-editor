@@ -19,6 +19,17 @@ const dom = new JSDOM(html, {
 const { window } = dom;
 const doc = window.document;
 
+// Helper: open the ☰ category menu and select the i-th TOP category.
+// The palette was redesigned from two layer buttons (layerTiles/layerObjects)
+// into a category menu (catMenuBtn + catMenu). TOPS order: 0 floor, 1 wall,
+// 2 deco, 3 item, 4 marker. Indices 0/1 are tile-ish; 2/3/4 are object categories.
+function selectTop(i) {
+  const m = doc.getElementById("catMenu");
+  if (m.hidden) doc.getElementById("catMenuBtn").click(); // open + renderCatMenu
+  const tops = doc.querySelectorAll(".cat-group-title");
+  tops[i].click(); // selectCategory(top.id) + closeCatMenu
+}
+
 // init runs on DOMContentLoaded; jsdom fires it. Give microtasks a tick.
 setTimeout(() => {
   try {
@@ -48,8 +59,8 @@ setTimeout(() => {
     const doorOk = gO[0][20] === MapLib.idByStyle("WallPath:WoodLockedGold");
     console.log("example door placed at (20,0):", doorOk ? "OK" : "FAIL", "id=" + gO[0][20]);
 
-    // switch to objects layer and count palette
-    doc.getElementById("layerObjects").click();
+    // switch to an objects category via the ☰ menu (replaces removed layerObjects button)
+    selectTop(3); // "item" top = 钥匙/门/道具（全部物件）
     const objItems = doc.querySelectorAll(".pal-item").length;
     console.log("palette items (objects layer):", objItems, objItems > 0 ? "OK" : "FAIL");
 
@@ -107,7 +118,7 @@ setTimeout(() => {
 
     // 铺当前选中地板: select a floor brush, click 铺地板, verify whole tile layer = that id
     search.value = ""; search.dispatchEvent(new window.Event("input")); // clear prior filter
-    doc.getElementById("layerTiles").click();
+    selectTop(0); // back to 地板 (tiles/floor) category
     const firstFloorItem = doc.querySelector(".pal-item"); // tiles layer first section is 地板 Floor
     firstFloorItem.click();
     const selItem = doc.querySelector(".pal-item.sel");
@@ -124,7 +135,7 @@ setTimeout(() => {
     const langSel = doc.getElementById("langSel");
     const langOk =
       !!langSel &&
-      langSel.options.length === 7 &&
+      langSel.options.length === 8 &&
       (() => {
         // switch → en
         langSel.value = "en";
@@ -132,7 +143,7 @@ setTimeout(() => {
         const en =
           doc.getElementById("btnExample").textContent === "Example" &&
           doc.getElementById("btnExport").textContent === "Generate code" &&
-          doc.getElementById("layerTiles").textContent === "Floor/Wall layer" &&
+          doc.getElementById("curCatLabel").textContent.length > 0 &&
           doc.getElementById("toolBrush_t").textContent === "Brush" &&
           window.localStorage.getItem("bc-map-locale") === "en";
         // switch → cn
