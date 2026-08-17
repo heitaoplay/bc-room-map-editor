@@ -2688,6 +2688,66 @@ window.MAP_ZH_LABELS = {
     selectBrush(CAT.tiles.find((t) => t.type === "Floor") || CAT.tiles[0]);
   }
 
+  // ── BMM 实时联动桥接（仅当被 BMM 以 window.open 打开时启用）──
+  (function () {
+    function start() {
+      if (!window.opener) return; // 独立打开编辑器时不启用
+      const opener = window.opener;
+      let throttle = null;
+      function send(msg) { try { opener.postMessage(Object.assign({ source: "bmm-editor" }, msg), "*"); } catch (e) {} }
+      function liveNow() { const s = exportStr(); if (s) send({ type: "live", map: s }); }
+      function liveThrottled() { if (throttle) return; throttle = setTimeout(function () { throttle = null; liveNow(); }, 120); }
+
+      // 接收 BMM 指令
+      window.addEventListener("message", function (e) {
+        const d = e.data || {};
+        if (d.source !== "bmm") return;
+        if (d.type === "load" && d.map) { try { loadFromString(d.map); liveNow(); } catch (err) {} }
+        else if (d.type === "request-sync") { liveNow(); }
+        else if (d.type === "ping") { send({ type: "pong" }); }
+      });
+
+      // 每次编辑提交 → 节流回传当前地图给 BMM
+      const _origPush = pushHistory;
+      pushHistory = function () { const r = _origPush.apply(this, arguments); liveThrottled(); return r; };
+
+      // 「应用到游戏」按钮（动态注入，避免改模板）
+      const exportBtn = document.getElementById("btnExport");
+      if (exportBtn && exportBtn.parentNode) {
+        const applyBtn = document.createElement("button");
+        applyBtn.id = "btnApplyGame";
+        applyBtn.textContent = "应用到游戏";
+        applyBtn.title = "把当前地图发回 BMM（自动复制 mappaste 串）";
+        applyBtn.style.marginLeft = "6px";
+        applyBtn.addEventListener("click", function () {
+          const s = exportStr();
+          if (s) { send({ type: "export", map: s }); if (typeof flash === "function") flash("已发送回 BMM，去游戏粘贴 /mappaste"); }
+        });
+        exportBtn.parentNode.insertBefore(applyBtn, exportBtn.nextSibling);
+      }
+
+      // 标题栏加「BMM联动」标记（用 MutationObserver 防止 i18n 重写标题时丢失）
+      const hdr = document.getElementById("appTitle");
+      if (hdr) {
+        const mkBadge = () => {
+          if (document.getElementById("bmmLinkBadge")) return;
+          const b = document.createElement("span");
+          b.id = "bmmLinkBadge";
+          b.textContent = " · BMM联动";
+          b.style.cssText = "color:#14b478;font-size:12px;";
+          hdr.appendChild(b);
+        };
+        mkBadge();
+        new MutationObserver(mkBadge).observe(hdr, { childList: true });
+      }
+
+      // 通知 BMM：编辑器就绪
+      send({ type: "ready" });
+    }
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
+    else start();
+  })();
+
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
   else init();
 })();
