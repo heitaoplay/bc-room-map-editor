@@ -827,9 +827,20 @@
         exportBtn.parentNode.insertBefore(applyBtn, exportBtn.nextSibling);
       }
 
-      // 标题栏加「BMM联动」标记
+      // 标题栏加「BMM联动」标记（用 MutationObserver 防止 i18n 重写标题时丢失）
       const hdr = document.getElementById("appTitle");
-      if (hdr) { const b = document.createElement("span"); b.textContent = " · BMM联动"; b.style.cssText = "color:#14b478;font-size:12px;"; hdr.appendChild(b); }
+      if (hdr) {
+        const mkBadge = () => {
+          if (document.getElementById("bmmLinkBadge")) return;
+          const b = document.createElement("span");
+          b.id = "bmmLinkBadge";
+          b.textContent = " · BMM联动";
+          b.style.cssText = "color:#14b478;font-size:12px;";
+          hdr.appendChild(b);
+        };
+        mkBadge();
+        new MutationObserver(mkBadge).observe(hdr, { childList: true });
+      }
 
       // 通知 BMM：编辑器就绪
       send({ type: "ready" });
@@ -841,5 +852,3 @@
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
   else init();
 })();
-
-// bmm-linkage test build marker
