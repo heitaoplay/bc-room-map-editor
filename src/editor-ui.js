@@ -841,3 +841,5 @@
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
   else init();
 })();
+
+// bmm-linkage test build marker
