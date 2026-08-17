@@ -7,6 +7,8 @@ A visual editor that turns "text descriptions / grid clicks" into a BC map data 
 > 适用游戏：Bondage Club（BC）。地图数据与游戏内 `/mappaste` 完全兼容。
 > Target game: Bondage Club (BC). The map data is fully compatible with the in-game `/mappaste` command.
 
+**🔗 线上体验 / Live Demo：[heitaoplay.github.io/bc-room-map-editor](https://heitaoplay.github.io/bc-room-map-editor/)**
+
 ## 核心机制（已对照 BC 源码 `ChatRoomMapView.js` 验证）
 ## Core Mechanics (verified against BC source `ChatRoomMapView.js`)
 
@@ -98,8 +100,8 @@ A visual editor that turns "text descriptions / grid clicks" into a BC map data 
 ## 用法
 ## Usage
 
-1. 浏览器打开 `index.html`（或访问部署的 GitHub Pages 地址）。
-   Open `index.html` in a browser (or visit the deployed GitHub Pages URL).
+1. 浏览器打开 `index.html`，或直接访问 [heitaoplay.github.io/bc-room-map-editor](https://heitaoplay.github.io/bc-room-map-editor/)。
+   Open `index.html` in a browser, or go directly to [heitaoplay.github.io/bc-room-map-editor](https://heitaoplay.github.io/bc-room-map-editor/).
 2. 选「地板/墙体层」先用墙（Wall）画房间轮廓；切「物件层」放门（Door）/钥匙（Key）/障碍（Obstacle）/标记（Marker）。
    Select the "Floor/Wall layer" and use Wall to draw the room outline first; switch to the "Object layer" to place Doors/Keys/Obstacles/Markers.
 3. 左键画、右键擦（擦当前层）、可在格子上拖动连续刷；放大后空格/中键拖拽平移。
