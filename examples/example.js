@@ -1,7 +1,7 @@
 // Example map builder: a small sealed room with a gold-locked door, a gold key,
 // and a statue obstacle. Encodes to a /mappaste-compatible string and round-trips
 // through decode to prove the format is byte-valid (length 1600, valid IDs).
-const MapLib = require("./map-lib.js");
+const MapLib = require("../src/map-lib.js");
 
 const {
   W, H, BLANK, createGrid, setCell, encode, decode, idByStyle,

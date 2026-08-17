@@ -2,7 +2,8 @@
 // Inlines LZString.js, catalog.json, map-lib.js, and the UI script into editor-src.html.
 const fs = require("fs");
 const path = require("path");
-const dir = __dirname;
+const root = path.join(__dirname, "..");
+const dir = path.join(root, "src");
 
 const lz = fs.readFileSync(path.join(dir, "LZString.js"), "utf8");
 const cat = fs.readFileSync(path.join(dir, "catalog.json"), "utf8");
@@ -21,7 +22,7 @@ html = html.replace("/*__I18N__*/", () => i18n);
 html = html.replace("/*__IMAGES__*/", () => "window.MAP_IMAGES = " + images + ";");
 html = html.replace("/*__UI__*/", () => ui);
 
-const out = path.join(dir, "index.html");
+const out = path.join(root, "index.html");
 fs.writeFileSync(out, html);
 console.log("Wrote", out, "(", fs.statSync(out).size, "bytes )");
 

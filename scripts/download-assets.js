@@ -4,8 +4,8 @@
 const fs = require("fs");
 const path = require("path");
 const https = require("https");
-const cat = require("./catalog.json");
-const dir = __dirname;
+const cat = require("../src/catalog.json");
+const root = path.join(__dirname, "..");
 const BASE = "https://gitgud.io/BondageProjects/Bondage-College/-/raw/master/BondageClub/Screens/Online/ChatRoom/";
 
 function get(url) {
@@ -39,7 +39,7 @@ async function run() {
     const url = BASE + rel;
     const buf = await get(url);
     if (buf && buf.length > 100) {
-      const out = path.join(dir, "assets", rel);
+      const out = path.join(root, "assets", rel);
       fs.mkdirSync(path.dirname(out), { recursive: true });
       fs.writeFileSync(out, buf);
       manifest[`${j.type}:${j.style}`] = "assets/" + rel;
@@ -49,7 +49,7 @@ async function run() {
     }
     if ((i + 1) % 25 === 0) console.log(`progress ${i + 1}/${jobs.length}  ok=${ok} miss=${miss}`);
   }
-  fs.writeFileSync(path.join(dir, "images.json"), JSON.stringify(manifest));
+  fs.writeFileSync(path.join(root, "src", "images.json"), JSON.stringify(manifest));
   console.log(`\nDONE: ${ok} images saved, ${miss} missing/skipped. total ${(totalBytes / 1024 / 1024).toFixed(1)} MB`);
   console.log("manifest entries:", Object.keys(manifest).length);
 }

@@ -21,18 +21,31 @@
 - **画布平移**：放大后按住 **空格 + 左键拖拽** 或 **鼠标中键拖拽** 平移地图。
 - **深色主题** + 自定义滚动条 + 入场/交互动画。
 
-## 文件
-| 文件 | 作用 |
-|---|---|
-| `index.html` | **自包含可视化编辑器**（直接双击用浏览器打开即可用；调色板缩略图需同目录的 `assets/` 文件夹，或部署到 GitHub Pages 后自动可用）。 |
-| `editor-src.html` / `editor-ui.js` / `i18n.js` / `build-editor.js` | 编辑器源码与打包脚本（`build-editor.js` 把 LZString + catalog + 库 + UI + 多语言内联进 `index.html`）。 |
-| `map-lib.js` | 编码库（Node + 浏览器通用）：`encode/decode/gridToChars/charsToGrid/validateId/idByStyle`。 |
-| `catalog.json` | 部件目录：53 地板/墙体 + 225 物件 + 8 效果，含 `byId`/`byStyle` 索引。 |
-| `images.json` / `assets/` | 部件缩略图清单与图片（仅编辑器预览用，不影响编码逻辑）。 |
-| `zh-labels.js` | 部件中文名（cn/tw 界面用）。 |
-| `example.js` / `example-map.txt` | 示例：外墙 + 金锁门 + 金钥匙 + 雕像 + 入口旗，encode→decode 往返验证，输出可直接 `/mappaste` 的串。 |
-| `extract-catalog.js` / `download-assets.js` | 从 BC 源码抽部件表 / 下载缩略图的构建辅助脚本。 |
-| `test-editor.js` | jsdom 无头冒烟测试。 |
+## 目录结构
+```
+.
+├── index.html          # 自包含可视化编辑器（构建产物，勿手改；双击即可用）
+├── assets/             # 部件缩略图（配合 index.html 同目录使用，或部署到 GitHub Pages）
+├── src/                # 编辑器源码（构建前的原始文件）
+│   ├── editor-src.html #   带占位符的 HTML 模板
+│   ├── editor-ui.js    #   编辑器交互逻辑
+│   ├── i18n.js          #   多语言框架
+│   ├── zh-labels.js    #   部件中文名（cn/tw 界面用）
+│   ├── map-lib.js      #   编码库（Node + 浏览器通用）：encode/decode/gridToChars/charsToGrid/validateId/idByStyle
+│   ├── LZString.js     #   压缩库
+│   ├── catalog.json    #   部件目录：53 地板/墙体 + 225 物件 + 8 效果，含 byId/byStyle 索引
+│   └── images.json     #   部件缩略图路径清单
+├── scripts/            # 构建 / 维护脚本
+│   ├── build-editor.js #   把 src/ 下所有源码内联进 index.html
+│   ├── extract-catalog.js  # 从 BC 源码抽部件表 → src/catalog.json
+│   └── download-assets.js  # 下载缩略图 → assets/ + src/images.json
+├── tests/
+│   └── test-editor.js  # jsdom 无头冒烟测试（读取根目录 index.html）
+└── examples/
+    ├── example.js       # 示例：外墙 + 金锁门 + 金钥匙 + 雕像 + 入口旗，encode→decode 往返验证
+    └── example-map.txt  # 上面脚本输出的可直接 /mappaste 的串
+```
+`index.html` 与 `assets/` 必须留在仓库根目录：两者路径互相引用，也是 GitHub Pages 的部署入口。其余原始文件放进 `src/`、`scripts/`、`tests/`、`examples/`，不影响 `npm run build` / `npm test` 的运作。
 
 ## 用法
 1. 浏览器打开 `index.html`（或访问部署的 GitHub Pages 地址）。
@@ -44,10 +57,11 @@
 ## 开发 / 验证
 ```bash
 npm install          # 装 jsdom（仅测试需要）
-npm run build        # 重建 index.html
+npm run build        # 重建 index.html（src/ → 根目录 index.html）
 npm test             # jsdom 冒烟测试
+npm run example      # 跑 examples/example.js
 ```
-- `node example.js`：示例地图 encode→decode 往返，长度 1600、ID 合法、重编码稳定 ✅
+- `node examples/example.js`：示例地图 encode→decode 往返，长度 1600、ID 合法、重编码稳定 ✅
 - jsdom 冒烟测试 `index.html`：1600 格渲染、53+225 部件面板、示例→导出产出有效串、door 落位正确、多语言切换、铺地板、**0 个 JS 错误** ✅
 - 真机铺设效果待用户在游戏内 `/mappaste` 实测确认。
 

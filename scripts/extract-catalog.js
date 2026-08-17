@@ -5,7 +5,7 @@ const fs = require("fs");
 const path = require("path");
 
 const SRC = "/tmp/bc-map/ChatRoomMapView.js";
-const OUT = path.join(__dirname, "catalog.json");
+const OUT = path.join(__dirname, "..", "src", "catalog.json");
 
 const src = fs.readFileSync(SRC, "utf8");
 
