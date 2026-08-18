@@ -5,55 +5,278 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>BC 地图编辑器 · Room Map Editor</title>
 <style>
+  /* ===== 主题令牌（默认：经典 Classic） ===== */
   :root {
     --bg: #15181d; --panel: #1d222b; --panel2: #232a35; --line: #2e3744;
     --txt: #d7dde6; --muted: #8b97a7; --accent: #e0a93b; --ok: #5fd06b; --err: #e0604f;
+    --ink: #d7dde6; --ink-hi: #ffffff; --accent-soft: rgba(224,169,59,.5); --accent2: #f0c878;
+    --grid-bg: #0c0e12; --cell-line: rgba(255,255,255,.06);
+    --radius: 6px; --bw: 1px; --shadow: 0 10px 28px rgba(0,0,0,.5);
+    --font-body: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    --font-head: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    --font-mono: ui-monospace, Menlo, Consolas, monospace;
+    --on-ink: #1a1a1a; --pal-text: #fff;
+    --ease: cubic-bezier(.2,.8,.2,1); --dur: .18s;
+    /* 表单控件令牌 */
+    --chk-size: 15px; --chk-bg: var(--panel2); --chk-border: var(--line);
+    --chk-checked-bg: var(--accent); --chk-checked-border: var(--accent);
+    --sel-arrow: var(--muted);
   }
+  /* 苹果风 Apple — 毛玻璃 / 弹簧 / 柔和 */
+  [data-theme="apple"] {
+    --bg: #e9ecf1; --panel: rgba(255,255,255,.72); --panel2: rgba(255,255,255,.55);
+    --line: rgba(0,0,0,.12); --txt: #1d1d1f; --muted: #6e6e73;
+    --accent: #0a84ff; --accent-soft: rgba(10,132,255,.32); --accent2: #5ac8fa;
+    --ink: #1d1d1f; --ink-hi: #000000; --grid-bg: #f4f6f9; --cell-line: rgba(0,0,0,.08);
+    --radius: 14px; --bw: 1px; --shadow: 0 8px 28px rgba(0,0,0,.16);
+    --font-body: -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
+    --font-head: -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
+    --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --on-ink: #ffffff; --pal-text: #fff;
+    --ease: cubic-bezier(.34,1.56,.64,1); --dur: .24s;
+    --chk-bg: rgba(0,0,0,.04); --chk-border: rgba(0,0,0,.15);
+    --chk-checked-bg: var(--accent); --chk-checked-border: var(--accent);
+    --sel-arrow: var(--accent);
+  }
+  /* 羊皮纸 Parchment — 做旧纸感 / 棕褐墨 / 衬线 */
+  [data-theme="parchment"] {
+    --bg: #d9c9a3; --panel: #e7d9b6; --panel2: #ddcaa3; --line: #bda77e;
+    --txt: #3a2614; --muted: #6a5038; --accent: #9c5a2c; --accent-soft: rgba(156,90,44,.35); --accent2: #7a8a3a;
+    --ink: #3a2614; --ink-hi: #2e2014; --grid-bg: #ead9bb; --cell-line: rgba(120,90,50,.25);
+    --radius: 5px; --bw: 2px; --shadow: 0 2px 10px rgba(74,56,38,.3);
+    --font-body: "Georgia", "Songti SC", serif;
+    --font-head: "Georgia", "Songti SC", serif;
+    --font-mono: ui-monospace, Menlo, Consolas, monospace;
+    --on-ink: #f4e9d2; --pal-text: #fff;
+    --ease: cubic-bezier(.4,0,.2,.9); --dur: .3s;
+    --chk-bg: #d4c296; --chk-border: #a88e63;
+    --chk-checked-bg: var(--accent); --chk-checked-border: #7a4018;
+    --sel-arrow: var(--accent);
+  }
+  /* 工程蓝图 Brutalist — 蓝图网格 / 硬边 / 机械 */
+  [data-theme="brutalist"] {
+    --bg: #0a0c10; --panel: #11151b; --panel2: #161b22; --line: #2b333d;
+    --txt: #eef1f4; --muted: #7c8794; --accent: #ff6a13; --accent-soft: rgba(255,106,19,.5); --accent2: #38bdf8;
+    --ink: #eef1f4; --ink-hi: #ffffff; --grid-bg: #070a0e; --cell-line: rgba(56,189,248,.12);
+    --radius: 0px; --bw: 2px; --shadow: 0 0 0 2px rgba(56,189,248,.25);
+    --font-body: "Helvetica Neue", Arial, "PingFang SC", sans-serif;
+    --font-head: "Helvetica Neue", Arial, "PingFang SC", sans-serif;
+    --font-mono: ui-monospace, Menlo, Consolas, monospace;
+    --on-ink: #0a0c10; --pal-text: #eef1f4;
+    --ease: linear; --dur: .08s;
+    --chk-bg: #0d1117; --chk-border: #38bdf8;
+    --chk-checked-bg: var(--accent); --chk-checked-border: var(--accent);
+    --sel-arrow: var(--accent2);
+  }
+
   * { box-sizing: border-box; }
   body {
     margin: 0; background: var(--bg); color: var(--txt);
-    font: 13px/1.5 -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    font: 13px/1.5 var(--font-body);
     height: 100vh; display: flex; flex-direction: column;
+    transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
   }
   header {
     display: flex; align-items: center; gap: 12px; padding: 8px 14px;
     background: var(--panel); border-bottom: 1px solid var(--line);
+    position: relative; z-index: 10;
   }
   header h1 { font-size: 15px; margin: 0; font-weight: 600; }
   header .sub { color: var(--muted); font-size: 12px; }
   .toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-left: auto; }
-  button, select {
+
+  /* ===== 自定义 Select 下拉框（完全替代原生弹出层） ===== */
+  /* 隐藏原生 select，仅保留数据源 */
+  select { display: none !important; }
+  /* 自定义下拉触发器 */
+  .c-select {
+    position: relative; display: inline-block;
+  }
+  .c-select-trigger {
+    display: inline-flex; align-items: center; gap: 4px;
     background: var(--panel2); color: var(--txt); border: 1px solid var(--line);
-    border-radius: 6px; padding: 5px 10px; cursor: pointer; font-size: 12px;
+    border-radius: var(--radius); padding: 5px 26px 5px 10px; cursor: pointer;
+    font-size: 12px; line-height: 1.4; white-space: nowrap;
+    transition: border-color var(--dur) var(--ease), background var(--dur) var(--ease),
+                box-shadow var(--dur) var(--ease), transform .12s;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%238b97a7'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 9px center; background-size: 10px 6px;
+    user-select: none;
+  }
+  .c-select-trigger:hover { border-color: var(--accent); }
+  .c-select.open > .c-select-trigger {
+    border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft);
+  }
+  /* 下拉面板 */
+  .c-select-dropdown {
+    position: absolute; top: calc(100% + 4px); left: 0; z-index: 100;
+    min-width: 100%; background: var(--panel2);
+    border: 1px solid var(--line); border-radius: var(--radius);
+    box-shadow: 0 12px 36px rgba(0,0,0,.28), 0 4px 12px rgba(0,0,0,.14);
+    padding: 4px; max-height: 280px; overflow-y: auto;
+    opacity: 0; visibility: hidden; transform: translateY(-4px) scale(.97);
+    transition: opacity .18s ease, transform .18s var(--ease), visibility .18s;
+    pointer-events: none;
+  }
+  .c-select.open > .c-select-dropdown {
+    opacity: 1; visibility: visible; transform: translateY(0) scale(1);
+    pointer-events: auto;
+  }
+  .c-opt {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 10px; border-radius: calc(var(--radius) - 2px);
+    cursor: pointer; font-size: 12px; color: var(--txt);
+    white-space: nowrap; transition: background .12s, color .12s;
+  }
+  .c-opt:hover { background: var(--panel); color: var(--ink-hi); }
+  .c-opt.sel {
+    background: var(--accent); color: var(--on-ink); font-weight: 600;
+  }
+  /* 苹果风：毛玻璃触发器 + 圆润面板 */
+  [data-theme="apple"] .c-select-trigger {
+    background-color: rgba(255,255,255,.7);
+    backdrop-filter: blur(12px) saturate(160%);
+    -webkit-backdrop-filter: blur(12px) saturate(160%);
+    box-shadow: 0 1px 1px rgba(255,255,255,.9) inset, 0 4px 12px rgba(0,0,0,.06);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%230a84ff'/%3E%3C/svg%3E");
+  }
+  [data-theme="apple"] .c-select-dropdown {
+    background: rgba(255,255,255,.92);
+    backdrop-filter: blur(20px) saturate(200%);
+    -webkit-backdrop-filter: blur(20px) saturate(200%);
+    border: 1px solid rgba(0,0,0,.1);
+    border-radius: 12px;
+    box-shadow: 0 16px 48px rgba(0,0,0,.18), 0 4px 16px rgba(0,0,0,.08);
+  }
+  [data-theme="apple"] .c-opt.sel {
+    box-shadow: 0 2px 8px rgba(10,132,255,.25);
+  }
+  /* 羊皮纸：斜面触发器 + 暖色面板 */
+  [data-theme="parchment"] .c-select-trigger {
+    background-color: #d8c69c;
+    background-image: linear-gradient(180deg,#e3d2ab,#d8c69c),
+                      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%239c5a2c'/%3E%3C/svg%3E");
+    background-repeat: no-repeat, no-repeat;
+    background-position: center, right 9px center;
+    border-color: #a88e63;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.5), inset 0 -2px 4px rgba(74,56,38,.25);
+  }
+  [data-theme="parchment"] .c-select-dropdown {
+    background: #efe0c0;
+    border-color: #a88e63;
+    box-shadow: 0 8px 28px rgba(74,56,38,.3), 0 2px 8px rgba(74,56,38,.15);
+  }
+  [data-theme="parchment"] .c-opt.sel {
+    background: var(--accent); color: var(--on-ink);
+  }
+  /* 工程蓝图：硬边 */
+  [data-theme="brutalist"] .c-select-trigger,
+  [data-theme="brutalist"] .c-select-dropdown { border-radius: 0; }
+  [data-theme="brutalist"] .c-select-trigger {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23ff6a13'/%3E%3C/svg%3E");
+  }
+  [data-theme="brutalist"] .c-select-dropdown {
+    border: 2px solid var(--accent2);
+    box-shadow: 0 0 0 1px rgba(56,189,248,.25), 8px 8px 0 rgba(0,0,0,.5);
+  }
+  [data-theme="brutalist"] .c-opt { border-radius: 0; }
+  [data-theme="brutalist"] .c-opt.sel {
+    background: var(--accent); color: var(--on-ink);
+  }
+
+  /* ===== 自定义 Checkbox 勾选框 ===== */
+  input[type="checkbox"] {
+    appearance: none; -webkit-appearance: none; -moz-appearance: none;
+    width: var(--chk-size); height: var(--chk-size); margin: 0;
+    border: 1.5px solid var(--chk-border); border-radius: calc(var(--radius) / 2 + 1px);
+    background: var(--chk-bg); cursor: pointer;
+    position: relative; vertical-align: middle; flex-shrink: 0;
+    transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease),
+                transform .12s, box-shadow var(--dur) var(--ease);
+  }
+  input[type="checkbox"]:checked {
+    background: var(--chk-checked-bg); border-color: var(--chk-checked-border);
+  }
+  input[type="checkbox"]:checked::after {
+    content: "";
+    position: absolute; left: 4.5px; top: 1.5px;
+    width: 4px; height: 8px; border: solid var(--on-ink); border-width: 0 2px 2px 0;
+    transform: rotate(45deg) scale(1);
+    transition: transform .18s cubic-bezier(.34,1.56,.64,1);
+  }
+  input[type="checkbox"]:not(:checked)::after { content: none; }
+  [data-theme="apple"] input[type="checkbox"] {
+    border-radius: 6px; border-width: 1.5px;
+  }
+  [data-theme="apple"] input[type="checkbox"]:checked::after {
+    left: 4px; top: 1px; width: 5px; height: 9px;
+  }
+  [data-theme="parchment"] input[type="checkbox"] {
+    border-radius: 2px; border-width: 2px;
+  }
+  [data-theme="parchment"] input[type="checkbox"]:checked::after {
+    left: 4px; top: 0; width: 4px; height: 8px;
+  }
+  [data-theme="brutalist"] input[type="checkbox"] {
+    border-radius: 0; border-width: 2px;
+  }
+  [data-theme="brutalist"] input[type="checkbox"]:checked::after {
+    left: 4px; top: 0; width: 4px; height: 8px;
+  }
+  input[type="checkbox"]:active:not(:disabled) { transform: scale(.88); }
+  input[type="checkbox"]:hover { border-color: var(--accent); }
+
+  button {
+    background: var(--panel2); color: var(--txt); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 5px 10px; cursor: pointer; font-size: 12px;
+    white-space: nowrap; line-height: 1.35;
+    transition: border-color var(--dur) var(--ease), background var(--dur) var(--ease),
+                color var(--dur) var(--ease), transform .12s, box-shadow var(--dur) var(--ease);
   }
   button:hover { border-color: var(--accent); }
-  select { cursor: default; }
   main { flex: 1; display: flex; min-height: 0; }
+
   /* left palette */
   #paletteWrap { width: 260px; background: var(--panel); border-right: 1px solid var(--line); display: flex; flex-direction: column; }
   .layer-toggle { display: flex; align-items: center; padding: 8px; gap: 8px; border-bottom: 1px solid var(--line); }
   #catMenuBtn { flex: 0 0 auto; font-size: 16px; line-height: 1; padding: 5px 10px; }
   #curCatLabel { flex: 1; min-width: 0; font-size: 12px; font-weight: 600; color: var(--txt); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   #paletteWrap { position: relative; }
-  .cat-menu { position: absolute; top: 42px; left: 8px; right: 8px; z-index: 30; background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 10px 28px rgba(0,0,0,.5); padding: 8px; max-height: 65vh; overflow-y: auto; }
+  .cat-menu {
+    position: absolute; top: 42px; left: 8px; right: 8px; z-index: 30;
+    background: var(--panel2); border: 1px solid var(--line); border-radius: 8px;
+    box-shadow: 0 16px 48px rgba(0,0,0,.25), 0 4px 12px rgba(0,0,0,.15);
+    padding: 8px; max-height: 65vh; overflow-y: auto;
+    transition: opacity .2s ease, transform .22s cubic-bezier(.2,.8,.2,1);
+  }
   .cat-menu[hidden] { display: none; }
   .cat-group { margin-bottom: 8px; }
   .cat-group:last-child { margin-bottom: 0; }
-  .cat-group-title { font-weight: 700; font-size: 12px; padding: 5px 7px; border-radius: 5px; cursor: pointer; color: var(--accent); }
+  .cat-group-title {
+    font-weight: 700; font-size: 12px; padding: 5px 7px; border-radius: 5px;
+    cursor: pointer; color: var(--accent);
+    transition: background .18s, color .18s, transform .12s;
+  }
   .cat-group-title:hover { background: var(--panel); }
-  .cat-group-title.active { background: var(--accent); color: #1a1a1a; }
+  .cat-group-title.active { background: var(--accent); color: var(--on-ink); }
   .cat-sub-list { display: flex; flex-wrap: wrap; gap: 4px; padding: 5px 2px 2px; }
-  .cat-sub-item { font-size: 11px; padding: 4px 9px; border-radius: 12px; }
-  .cat-sub-item.active { background: var(--accent); color: #1a1a1a; border-color: var(--accent); font-weight: 600; }
+  .cat-sub-item {
+    font-size: 11px; padding: 4px 9px; border-radius: 12px;
+    border: 1px solid transparent; cursor: pointer; color: var(--txt);
+    transition: all .18s var(--ease);
+  }
+  .cat-sub-item:hover { border-color: var(--line); background: var(--panel); }
+  .cat-sub-item.active { background: var(--accent); color: var(--on-ink); border-color: var(--accent); font-weight: 600; }
   #palette { overflow-y: auto; padding: 8px; flex: 1; }
   .pal-section { margin-bottom: 12px; }
   .pal-title { font-weight: 600; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px; }
   .pal-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; }
   .pal-item {
     position: relative; display: flex; align-items: flex-end; padding: 3px 5px; border-radius: 5px;
-    border: 1px solid transparent; cursor: pointer; font-size: 11px; color: #fff;
+    border: 1px solid transparent; cursor: pointer; font-size: 11px; color: var(--pal-text);
     height: 42px; overflow: hidden; background-size: cover; background-position: center;
     text-shadow: 0 1px 2px #000, 0 0 3px #000;
+    transition: border-color .18s, box-shadow .22s, transform .15s var(--ease);
   }
   .pal-item span {
     position: relative; z-index: 1; white-space: nowrap; overflow: hidden;
@@ -61,13 +284,13 @@
     background: linear-gradient(transparent, rgba(0,0,0,.55));
     padding: 1px 3px; margin: -3px -5px; border-radius: 0 0 4px 4px;
   }
-  .pal-item:hover { border-color: #fff; }
-  .pal-item.sel { border-color: #fff; box-shadow: 0 0 0 2px var(--accent); }
+  .pal-item:hover { border-color: var(--accent); transform: translateY(-2px) scale(1.02); }
+  .pal-item.sel { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
   .pal-badge {
     position: absolute; top: 1px; right: 1px;
     font-size: 9px; font-weight: 700; line-height: 14px;
     width: 15px; text-align: center; border-radius: 3px;
-    color: #111; z-index: 2; pointer-events: none;
+    background: var(--accent); color: var(--on-ink); z-index: 2; pointer-events: none;
     box-shadow: 0 0 3px rgba(0,0,0,.7);
   }
   /* center grid */
@@ -75,55 +298,69 @@
   .zoom-bar { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
   .zoom-bar button { min-width: 30px; height: 26px; font-size: 13px; font-weight: 600; line-height: 1; padding: 0 6px; text-align: center; white-space: nowrap; }
   #zoomLevel { color: var(--muted); font-size: 12px; min-width: 42px; text-align: center; }
-  #gridWrap { overflow: auto; max-width: 100%; max-height: 100%; margin: auto; border: 1px solid var(--line); background: #0c0e12; }
+  #gridWrap {
+    overflow: auto; max-width: 100%; max-height: 100%; margin: auto;
+    border: 1px solid var(--line); background: var(--grid-bg);
+    transition: box-shadow var(--dur) var(--ease), border-color var(--dur) var(--ease);
+  }
   #grid {
     display: grid; grid-template-columns: repeat(var(--n), var(--cell, 13px)); grid-auto-rows: var(--cell, 13px);
     gap: 0; user-select: none;
   }
   .cell { position: relative; width: 100%; height: 100%; background-size: cover; background-position: center; overflow: hidden; }
   .cell .obj { position: absolute; inset: 0; background-size: contain; background-position: center; background-repeat: no-repeat; pointer-events: none; }
-  .cell:hover { outline: 1.5px solid #fff; outline-offset: -1.5px; z-index: 1; }
+  .cell:hover { outline: 1.5px solid var(--accent); outline-offset: -1.5px; z-index: 1; }
   #brushInfo { margin-top: 10px; color: var(--muted); font-size: 12px; }
   /* right panel */
   #right { width: 320px; background: var(--panel); border-left: 1px solid var(--line); display: flex; flex-direction: column; padding: 10px; gap: 8px; }
   #right h2 { font-size: 12px; margin: 0; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
   #output {
-    width: 100%; height: 120px; resize: vertical; background: #0c0e12; color: var(--txt);
-    border: 1px solid var(--line); border-radius: 6px; padding: 6px; font-family: ui-monospace, monospace; font-size: 11px;
+    width: 100%; height: 120px; resize: vertical; background: var(--grid-bg); color: var(--txt);
+    border: 1px solid var(--line); border-radius: var(--radius); padding: 6px;
+    font-family: ui-monospace, monospace; font-size: 11px;
+    transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
   }
   #stats { font-size: 11px; color: var(--muted); }
   .ok { color: var(--ok); } .err { color: var(--err); }
-  .row { display: flex; gap: 6px; align-items: center; }
-  #flash { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: var(--accent); color: #1a1a1a; padding: 6px 14px; border-radius: 16px; opacity: 0; transition: opacity .3s; font-weight: 600; }
+  .row { display: flex; gap: 6px; align-items: center; flex-wrap: nowrap; }
+  .row button { flex-shrink: 0; }
+  #flash {
+    position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
+    background: var(--accent); color: var(--on-ink); padding: 6px 14px;
+    border-radius: 16px; opacity: 0; transition: opacity .3s, transform .3s; font-weight: 600;
+  }
   .hint { font-size: 11px; color: var(--muted); }
-  label.chk { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; }
+  label.chk { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; cursor: pointer; }
   /* tool groups in header */
   .tb-group { display: flex; gap: 6px; align-items: center; padding-left: 10px; margin-left: 4px; border-left: 1px solid var(--line); }
-  .tb-group button.active { background: var(--accent); color: #1a1a1a; border-color: var(--accent); font-weight: 600; }
+  .tb-group button.active { background: var(--accent); color: var(--on-ink); border-color: var(--accent); font-weight: 600; }
   .tb-group button:disabled { opacity: .4; cursor: not-allowed; }
   /* palette search */
-  #palSearch { margin: 8px 8px 0; padding: 6px 9px; width: calc(100% - 16px); border-radius: 6px;
-    background: var(--panel2); color: var(--txt); border: 1px solid var(--line); font-size: 12px; }
-  #palSearch:focus { outline: none; border-color: var(--accent); }
+  #palSearch {
+    margin: 8px 8px 0; padding: 6px 9px; width: calc(100% - 16px); border-radius: var(--radius);
+    background: var(--panel2); color: var(--txt); border: 1px solid var(--line); font-size: 12px;
+    transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+  }
+  #palSearch:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
   /* coordinate readout */
-  #coords { margin-top: 8px; color: var(--muted); font-size: 12px; font-family: ui-monospace, monospace; }
+  #coords { margin-top: 8px; color: var(--muted); font-size: 12px; font-family: var(--font-mono); }
   /* drawing tool bar — sits between zoom bar and grid */
   .tool-bar {
     display: flex; gap: 3px; margin-bottom: 8px;
-    background: var(--panel); border: 1px solid var(--line); border-radius: 7px;
+    background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
     padding: 4px;
   }
   .tool-btn {
     display: inline-flex; align-items: center; gap: 5px;
-    background: transparent; color: var(--muted); border: 1px solid transparent;
-    border-radius: 5px; padding: 5px 10px; cursor: pointer; font-size: 12px;
-    transition: all .15s;
+    background: transparent; color: var(--txt); border: 1px solid transparent;
+    border-radius: var(--radius); padding: 5px 10px; cursor: pointer; font-size: 12px;
+    transition: all var(--dur) var(--ease);
   }
   .tool-btn:hover { color: var(--txt); background: var(--panel2); border-color: var(--line); }
-  .tool-btn.active { background: var(--accent); color: #1a1a1a; border-color: var(--accent); font-weight: 600; }
+  .tool-btn.active { background: var(--accent); color: var(--on-ink); border-color: var(--accent); font-weight: 600; }
   .tool-btn svg { width: 16px; height: 16px; flex-shrink: 0; }
 
-  /* ===== Custom dark scrollbars ===== */
+  /* ===== Custom scrollbars ===== */
   ::-webkit-scrollbar { width: 6px; height: 6px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb {
@@ -132,11 +369,9 @@
   }
   ::-webkit-scrollbar-thumb:hover { background: #4a5568; }
   ::-webkit-scrollbar-corner { background: transparent; }
-
-  /* Firefox */
   * { scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
 
-  /* ===== Animations & polish ===== */
+  /* ===== 共享动画基础 ===== */
   @keyframes fadeInUp {
     from { opacity: 0; transform: translateY(8px); }
     to   { opacity: 1; transform: translateY(0); }
@@ -147,64 +382,365 @@
   }
   @keyframes selPulse {
     0%   { box-shadow: 0 0 0 2px var(--accent); }
-    50%  { box-shadow: 0 0 0 3px rgba(224,169,59,.5), 0 0 12px rgba(224,169,59,.25); }
+    50%  { box-shadow: 0 0 0 3px var(--accent-soft), 0 0 12px var(--accent-soft); }
     100% { box-shadow: 0 0 0 2px var(--accent); }
+  }
+  @keyframes gentleFloat {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-2px); }
+  }
+  @keyframes inkSpread {
+    from { box-shadow: 0 0 0 0 var(--accent-soft); }
+    to   { box-shadow: 0 0 0 4px var(--accent-soft); }
+  }
+  @keyframes scanLine {
+    0%   { background-position: 0 0; }
+    100% { background-position: 0 100%; }
+  }
+  @keyframes brutalistBlink {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: .6; }
   }
 
   body { animation: fadeInUp .35s ease-out both; }
   header { animation: fadeInUp .35s ease-out .05s both; }
   main   { animation: fadeInUp .35s ease-out .1s both; }
 
-  button, select {
-    transition: border-color .18s, background .18s, color .18s, transform .12s;
-  }
+  /* 按下反馈：苹果风弹簧 / 其他普通缩放 */
+  [data-theme="apple"] button:active:not(:disabled) { transform: scale(.93); transition: transform .08s; }
   button:active:not(:disabled) { transform: scale(.96); }
+  #flash.showing { animation: flashSlide .28s ease-out both; }
 
-  #flash {
-    transition: opacity .3s, transform .3s;
-    backdrop-filter: blur(6px);
-  }
-  #flash.showing {
-    animation: flashSlide .28s ease-out both;
-  }
-
-  .pal-item {
-    transition: border-color .15s, box-shadow .2s, transform .12s;
-  }
-  .pal-item:hover { transform: translateY(-1px); }
+  .pal-item { transition: border-color .18s, box-shadow .22s, transform .15s var(--ease); }
   .pal-item.sel { animation: selPulse 1.6s ease-in-out infinite; }
+  .zoom-bar button { transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease); }
+  #stats { transition: opacity .2s; }
 
   .cell:hover::after {
     content: ""; position: absolute; inset: 0;
     background: radial-gradient(circle at center, rgba(255,255,255,.08) 0%, transparent 70%);
     pointer-events: none;
   }
+  #gridWrap { cursor: grab; }
+  #gridWrap.panning, #gridWrap:active { cursor: grabbing; }
 
-  #gridWrap {
-    cursor: grab;
-    transition: border-color .2s;
-  }
-  #gridWrap.panning { cursor: grabbing; }
-  #gridWrap:active { cursor: grabbing; }
-
-  .zoom-bar button { transition: background .15s, border-color .15s; }
-  .cat-group-title, .cat-sub-item { transition: background .2s, color .2s, border-color .2s; }
-
-  /* subtle header depth */
-  header {
-    background: linear-gradient(180deg, var(--panel) 0%, rgba(29,34,43,.98) 100%);
-    box-shadow: 0 1px 0 rgba(255,255,255,.03) inset;
-  }
-
-  /* right panel textarea focus glow */
   #output:focus {
-    outline: none;
-    border-color: var(--accent);
-    box-shadow: 0 0 0 2px rgba(224,169,59,.15);
+    outline: none; border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent-soft);
   }
 
-  /* stats row micro-animation */
-  #stats { transition: opacity .2s; }
+  /* ===== 右面板操作区 ===== */
+  #right { flex-direction: column; }
+  #btnExport {
+    font-weight: 600;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: var(--on-ink);
+    border-color: transparent;
+  }
+  [data-theme="apple"] #btnExport {
+    background: linear-gradient(135deg, #0a84ff, #5ac8fa);
+    box-shadow: 0 4px 16px rgba(10,132,255,.3);
+  }
+  [data-theme="parchment"] #btnExport {
+    background: linear-gradient(135deg, #9c5a2c, #7a8a3a);
+    box-shadow: 0 2px 8px rgba(156,90,44,.25);
+  }
+  [data-theme="brutalist"] #btnExport {
+    background: linear-gradient(135deg, #ff6a13, #e55a00);
+    border-radius: 0;
+  }
+  /* 「应用到游戏」——醒目主按钮 */
+  #btnApplyGame {
+    font-weight: 700; font-size: 13px;
+    padding: 8px 18px;
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: #fff; border: none;
+    border-radius: var(--radius);
+    box-shadow: 0 4px 16px rgba(16,185,129,.35);
+    transition: transform .15s var(--ease), box-shadow .2s, filter .15s;
+  }
+  #btnApplyGame:hover {
+    transform: translateY(-1px) scale(1.03);
+    box-shadow: 0 6px 24px rgba(16,185,129,.45);
+    filter: brightness(1.08);
+  }
+  [data-theme="apple"] #btnApplyGame {
+    background: linear-gradient(135deg, #34c759, #30d158);
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(52,199,89,.35);
+  }
+  [data-theme="parchment"] #btnApplyGame {
+    background: linear-gradient(135deg, #6b8e4a, #4a6828);
+    box-shadow: 0 3px 12px rgba(74,104,40,.3);
+  }
+  [data-theme="brutalist"] #btnApplyGame {
+    background: #10b981; border-radius: 0;
+    border: 2px solid #10b981;
+    box-shadow: 4px 4px 0 #059669;
+  }
+  [data-theme="brutalist"] #btnApplyGame:hover {
+    transform: translate(-2px,-2px);
+    box-shadow: 6px 6px 0 #059669;
+  }
+
+  /* ================================================================
+     苹果风 Apple — 毛玻璃面板 / 弹簧缓动 / 柔和光晕 / 浮动idle
+     ================================================================ */
+  [data-theme="apple"] body {
+    background: linear-gradient(135deg, #dfe4ea, #eef1f5 50%, #e3e8ee);
+  }
+  [data-theme="apple"] button:not(.tool-btn) {
+    background: rgba(255,255,255,.7);
+    backdrop-filter: blur(12px) saturate(160%);
+    -webkit-backdrop-filter: blur(12px) saturate(160%);
+    box-shadow: 0 1px 1px rgba(255,255,255,.9) inset, 0 6px 16px rgba(0,0,0,.08);
+  }
+  [data-theme="apple"] button:not(.tool-btn):hover {
+    border-color: var(--accent); background: rgba(255,255,255,.92);
+    transform: translateY(-1px); box-shadow: 0 4px 20px rgba(10,132,255,.15);
+  }
+  [data-theme="apple"] .tool-btn { border-color: transparent; }
+  [data-theme="apple"] .tool-btn:hover {
+    background: rgba(255,255,255,.9);
+    color: var(--ink);
+  }
+  [data-theme="apple"] .tool-btn.active {
+    box-shadow: 0 4px 16px var(--accent-soft), 0 0 0 1px var(--accent);
+  }
+  [data-theme="apple"] header,
+  [data-theme="apple"] #paletteWrap,
+  [data-theme="apple"] #right {
+    background: rgba(255,255,255,.6);
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+  }
+  [data-theme="apple"] #gridWrap {
+    box-shadow: 0 0 0 1px rgba(0,0,0,.08), 0 8px 32px rgba(0,0,0,.06);
+  }
+  [data-theme="apple"] .cat-menu {
+    background: rgba(255,255,255,.85);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    box-shadow: 0 16px 48px rgba(0,0,0,.18), 0 4px 16px rgba(0,0,0,.08),
+                0 0 0 1px rgba(0,0,0,.06);
+    border: 1px solid rgba(0,0,0,.1);
+  }
+  [data-theme="apple"] .cat-group-title.active,
+  [data-theme="apple"] .cat-sub-item.active,
+  [data-theme="apple"] .tb-group button.active {
+    background: var(--accent); color: var(--on-ink);
+    font-weight: 700;
+    box-shadow: 0 2px 10px var(--accent-soft), 0 0 0 1px var(--accent);
+  }
+  [data-theme="apple"] .pal-item.sel {
+    box-shadow: 0 0 0 2px var(--accent), 0 8px 24px var(--accent-soft);
+  }
+  [data-theme="apple"] .pal-item:hover {
+    transform: translateY(-2px) scale(1.03);
+    box-shadow: 0 4px 16px rgba(0,0,0,.1);
+  }
+  [data-theme="apple"] #flash {
+    background: var(--accent); color: var(--on-ink);
+    box-shadow: 0 8px 28px var(--accent-soft);
+  }
+  /* 苹果风：header 轻微浮动 idle */
+  [data-theme="apple"] header { animation: fadeInUp .4s var(--ease) .05s both, gentleFloat 5s ease-in-out 2s infinite; }
+  /* 苹果风：调色板 stagger 入场 */
+  [data-theme="apple"] .pal-item { animation: palItemIn .3s var(--ease) both; }
+  @keyframes palItemIn {
+    from { opacity: 0; transform: scale(.92) translateY(4px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+  }
+
+  /* ================================================================
+     羊皮纸 Parchment — 做旧纸面 / 斜面按钮 / 墨晕扩散 / 温暖浮动
+     ================================================================ */
+  [data-theme="parchment"] body {
+    background:
+      radial-gradient(circle at 20% 15%, rgba(255,255,255,.35), transparent 40%),
+      radial-gradient(circle at 85% 80%, rgba(120,90,50,.18), transparent 50%),
+      #d9c9a3;
+  }
+  [data-theme="parchment"] button:not(.tool-btn) {
+    background: linear-gradient(180deg, #e3d2ab, #d8c69c);
+    border-color: #a88e63; color: var(--txt);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.5), inset 0 -2px 4px rgba(74,56,38,.25),
+                0 2px 4px rgba(74,56,38,.15);
+  }
+  [data-theme="parchment"] button:not(.tool-btn):hover {
+    border-color: var(--accent);
+    transform: translateY(-1px);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.5), inset 0 -2px 4px rgba(74,56,38,.25),
+                0 4px 10px rgba(74,56,38,.25);
+  }
+  [data-theme="parchment"] .tool-btn {
+    background: transparent; color: var(--txt);
+  }
+  [data-theme="parchment"] .tool-btn:hover {
+    background: rgba(255,255,255,.3);
+    color: var(--ink-hi);
+  }
+  [data-theme="parchment"] .tool-btn.active {
+    background: var(--accent); color: var(--on-ink);
+    box-shadow: 0 2px 8px rgba(156,90,44,.3);
+  }
+  [data-theme="parchment"] header,
+  [data-theme="parchment"] #paletteWrap,
+  [data-theme="parchment"] #right {
+    background: #e7d9b6;
+    background-image: repeating-linear-gradient(0deg, rgba(120,90,50,.05) 0 2px, transparent 2px 6px);
+  }
+  [data-theme="parchment"] #gridWrap {
+    box-shadow: inset 0 0 30px rgba(120,90,50,.25);
+  }
+  [data-theme="parchment"] .cat-menu {
+    background: #efe0c0;
+    box-shadow: 0 8px 32px rgba(74,56,38,.3), 0 2px 8px rgba(74,56,38,.15);
+    border-color: #a88e63;
+  }
+  [data-theme="parchment"] .pal-item.sel {
+    animation: selPulse 2.6s ease-in-out infinite;
+  }
+  [data-theme="parchment"] .pal-item:hover {
+    animation: inkSpread .35s ease-out forwards;
+  }
+  [data-theme="parchment"] #flash {
+    background: var(--accent); color: var(--on-ink);
+    box-shadow: 0 2px 8px rgba(156,90,44,.3);
+  }
+  /* 羊皮纸：面板轻微浮动 */
+  [data-theme="parchment"] #paletteWrap,
+  [data-theme="parchment"] #right {
+    animation: gentleFloat 6s ease-in-out 3s infinite;
+  }
+  /* 羊皮纸：工具栏按钮文字加深 */
+  [data-theme="parchment"] .tool-btn { color: var(--txt); font-weight: 500; }
+  [data-theme="parchment"] .tool-btn svg { stroke: var(--txt); }
+
+  /* ================================================================
+     工程蓝图 Brutalist — 硬边 / 蓝图网格 / 机械 snap / 扫描线
+     ================================================================ */
+  [data-theme="brutalist"] body { background: #0a0c10; }
+  [data-theme="brutalist"] #stage {
+    background-image:
+      linear-gradient(transparent 0, transparent 23px, rgba(56,189,248,.06) 24px),
+      linear-gradient(90deg, transparent 0, transparent 23px, rgba(56,189,248,.06) 24px);
+    background-size: 24px 24px, 24px 24px;
+  }
+  [data-theme="brutalist"] button { border-radius: 0; }
+  [data-theme="brutalist"] button:hover {
+    background: var(--accent); color: var(--on-ink);
+    border-color: var(--accent);
+  }
+  [data-theme="brutalist"] .tool-btn { border-radius: 0; color: var(--muted); }
+  [data-theme="brutalist"] .tool-btn:hover {
+    background: var(--panel2); color: var(--ink);
+    border-color: var(--accent2);
+  }
+  [data-theme="brutalist"] .tool-btn.active {
+    background: var(--accent); color: var(--on-ink);
+  }
+  [data-theme="brutalist"] .tb-group button.active {
+    background: var(--accent); color: var(--on-ink);
+  }
+  [data-theme="brutalist"] .pal-item.sel {
+    animation: selPulse .9s steps(2,end) infinite;
+  }
+  [data-theme="brutalist"] .pal-item:hover {
+    transform: none;
+    border-color: var(--accent2);
+    box-shadow: 0 0 0 1px var(--accent2), 0 0 8px rgba(56,189,248,.2);
+  }
+  [data-theme="brutalist"] .cat-menu {
+    border-radius: 0;
+    border: 2px solid var(--accent2);
+    box-shadow: 0 0 0 1px rgba(56,189,248,.3), 8px 8px 0 rgba(0,0,0,.5);
+  }
+  [data-theme="brutalist"] .cat-group-title.active,
+  [data-theme="brutalist"] .cat-sub-item.active {
+    background: var(--accent); color: var(--on-ink);
+  }
+  [data-theme="brutalist"] #flash {
+    background: var(--accent); color: var(--on-ink); border-radius: 0;
+  }
+  /* 蓝图：网格区域扫描线动画 */
+  [data-theme="brutalist"] #gridWrap {
+    position: relative;
+    overflow: hidden;
+  }
+  [data-theme="brutalist"] #gridWrap::after {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent 0px, transparent 23px,
+      rgba(56,189,248,.04) 24px
+    );
+    animation: scanLine 4s linear infinite;
+  }
+  /* 蓝图：选中项机械闪烁 */
+  [data-theme="brutalist"] .pal-item.sel { animation: brutalistBlink 1.2s steps(1,end) infinite; }
+  /* 蓝图：按钮硬 snap 反馈 */
+  [data-theme="brutalist"] button:active:not(:disabled) {
+    transform: scale(.98);
+    transition: transform .03s linear;
+  }
+
+  /* ===== 主题切换全屏过渡 ===== */
+  #themeLoading {
+    position: fixed; inset: 0; z-index: 999;
+    display: flex; align-items: center; justify-content: center;
+    flex-direction: column; gap: 14px;
+    pointer-events: none; opacity: 0;
+    transition: opacity .25s ease;
+    background: rgba(10,12,16,.6);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
+  #themeLoading.show { opacity: 1; pointer-events: auto; }
+  #themeLoading .tl-box {
+    display: flex; flex-direction: column; align-items: center; gap: 12px;
+  }
+  #themeLoading .tl-spin {
+    width: 42px; height: 42px; border-radius: 50%;
+    border: 3px solid rgba(255,255,255,.2);
+    border-top-color: var(--accent);
+    animation: tlSpin .7s linear infinite;
+  }
+  #themeLoading .tl-text {
+    color: var(--txt); font: 13px/1.4 var(--font-body); letter-spacing: .08em;
+  }
+  @keyframes tlSpin { to { transform: rotate(360deg); } }
+
+  /* 经典：默认旋转 */
+  /* 羊皮纸：墨晕式扩散旋转 */
+  [data-theme="parchment"] #themeLoading .tl-spin {
+    border-radius: 2px;
+    border: 3px solid rgba(120,90,50,.25);
+    border-top-color: var(--accent);
+    animation: tlSpin 1.1s ease-in-out infinite;
+  }
+  /* 工程蓝图：扫描线横扫 */
+  [data-theme="brutalist"] #themeLoading .tl-spin {
+    border: 2px solid var(--accent2); border-radius: 0;
+    animation: tlScan .6s steps(6,end) infinite;
+  }
+  @keyframes tlScan {
+    0%   { transform: scaleX(.2); }
+    50%  { transform: scaleX(1); }
+    100% { transform: scaleX(.2); }
+  }
+  /* 各风格过渡遮罩底色 */
+  [data-theme="brutalist"] #themeLoading { background: rgba(7,10,14,.88); }
+  [data-theme="apple"] #themeLoading { background: rgba(233,236,241,.75); }
+  [data-theme="parchment"] #themeLoading { background: rgba(217,201,163,.82); }
+
+  /* ===== Reduced Motion ===== */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: .01ms !important;
+      transition-duration: .01ms !important;
+    }
+  }
 </style>
 </head>
 <body>
@@ -228,17 +764,20 @@
       </div>
       <button id="btnFill" title="铺满当前选中的地板/部件（未选中则橡木地板）">铺地板</button>
       <button id="btnClear">清空</button>
-      <button id="btnExample">示例</button>
-      <button id="btnExport" title="生成 mappaste 数据串到下方文本框">生成代码</button>
-      <label class="tb-group" style="border-left:1px solid var(--line);padding-left:10px;margin-left:4px">
-        <input type="file" id="fileImport" accept=".txt,.json,.map" style="display:none" />
-        <button id="btnFileImport" title="从本地文件导入地图数据">导入文件</button>
-        <button id="btnFileExport" title="导出为 .txt 文件下载到本地">导出文件</button>
-      </label>
       <label class="chk" style="border-left:1px solid var(--line);padding-left:10px;margin-left:4px">
         <span id="langLabel">语言</span>
         <select id="langSel"></select>
       </label>
+      <label class="chk" style="border-left:1px solid var(--line);padding-left:10px;margin-left:4px">
+        <span id="themeLabel">主题</span>
+        <select id="themeSel">
+          <option value="classic">经典</option>
+          <option value="apple">苹果风</option>
+          <option value="parchment">羊皮纸</option>
+          <option value="brutalist">工程蓝图</option>
+        </select>
+      </label>
+      <button id="btnMute" title="切换交互音效">音效：开</button>
     </div>
   </header>
 
@@ -280,21 +819,31 @@
       <div id="gridWrap"><div id="grid"></div></div>
       <div id="brushInfo">未选择部件</div>
       <div id="coords">—</div>
-      <div class="hint" id="stageHint">左键绘制 · 右键擦除（当前层）· 拖动连续刷 · 快捷键 B笔刷/R矩形/L直线/F填充/E橡皮擦 · Ctrl+Z撤销 Ctrl+Y重做</div>
+      <div class="hint" id="stageHint">左键绘制 · 右键擦除（当前层）· 拖动连续刷 · 快捷键 B笔刷 / R矩形 / L直线 / F填充 / E橡皮擦 · Ctrl+Z撤销 Ctrl+Y重做</div>
     </div>
 
     <div id="right">
       <h2 id="panelTitle">mappaste 数据串</h2>
       <textarea id="output" placeholder="点「生成代码」自动填入，或直接粘贴已有的 mappaste 串"></textarea>
-      <div class="row">
+      <div class="row" style="margin-bottom:8px">
+        <button id="btnExport" title="生成 mappaste 数据串到下方文本框">生成代码</button>
         <button id="btnCopy">复制</button>
+        <button id="btnApplyGame" title="复制 mappaste 命令到剪贴板，去游戏聊天框粘贴即可铺设">应用到游戏</button>
         <span id="stats"></span>
       </div>
       <div class="hint" id="hintImport">粘贴串到文本框后按 <b>Ctrl+V</b> 即可自动识别并加载地图。<br>把最终串贴进游戏聊天框输入 <code>/mappaste &lt;串&gt;</code> 即可铺设。<br>注意：灯光/染色特效（Effects）不在 mappaste 串内，需游戏内另设。</div>
+
+      <!-- 文件操作区 -->
+      <input type="file" id="fileImport" accept=".txt,.json,.map" style="display:none" />
+      <div class="row" style="margin-top:auto;padding-top:10px;border-top:1px solid var(--line);gap:8px">
+        <button id="btnFileImport" title="从本地文件导入地图数据">导入文件</button>
+        <button id="btnFileExport" title="导出为 .txt 文件下载到本地">导出文件</button>
+      </div>
     </div>
   </main>
 
   <div id="flash"></div>
+  <div id="themeLoading"><div class="tl-box"><div class="tl-spin"></div><div class="tl-text" id="tlText">正在恢复工作台…</div></div></div>
 
   <!-- Injected by build-editor.js -->
   <script>// Copyright (c) 2013 Pieroxy <pieroxy@pieroxy.net>
@@ -1219,7 +1768,6 @@ window.MAP_ZH_LABELS = {
       "redo": "↷ 重做",
       "fillFloor": "铺地板",
       "clear": "清空",
-      "example": "示例",
       "genCode": "生成代码",
       "importFile": "导入文件",
       "exportFile": "导出文件",
@@ -1229,6 +1777,7 @@ window.MAP_ZH_LABELS = {
       "panel.title": "mappaste 数据串",
       "output.ph": "点「生成代码」自动填入，或直接粘贴已有的 mappaste 串",
       "copy": "复制",
+      "applyGame": "应用到游戏",
       "hint.import": "粘贴串到文本框后按 Ctrl+V 即可自动识别并加载地图。把最终串贴进游戏聊天框输入 /mappaste <串> 即可铺设。注意：灯光/染色特效（Effects）不在 mappaste 串内，需游戏内另设。",
       "cat.floor": "地板",
       "cat.wall": "墙",
@@ -1280,6 +1829,8 @@ window.MAP_ZH_LABELS = {
       "flash.loadFail": "加载失败：",
       "flash.copied": "已复制到剪贴板",
       "flash.copiedCompat": "已复制（兼容模式）",
+      "flash.applied": "已复制 /mappaste 命令，去游戏聊天框 Ctrl+V 粘贴",
+      "flash.appliedFail": "复制失败，请手动复制下方文本框内容",
       "flash.filled": "已铺满：",
       "oak": "橡木地板",
       "flash.cleared": "已清空",
@@ -1309,7 +1860,6 @@ window.MAP_ZH_LABELS = {
       "redo": "↷ 重做",
       "fillFloor": "鋪地板",
       "clear": "清空",
-      "example": "範例",
       "genCode": "生成代碼",
       "importFile": "匯入檔案",
       "exportFile": "匯出檔案",
@@ -1319,6 +1869,7 @@ window.MAP_ZH_LABELS = {
       "panel.title": "mappaste 資料串",
       "output.ph": "點「生成代碼」自動填入，或直接貼上已有的 mappaste 串",
       "copy": "複製",
+      "applyGame": "套用到遊戲",
       "hint.import": "在文字框內按 Ctrl+V 貼上資料串即可自動辨識並載入地圖。把最終資料串貼進遊戲聊天框輸入 /mappaste <串> 即可鋪設。注意：燈光/染色特效（Effects）不在 mappaste 串內，需遊戲內另設。",
       "cat.floor": "地板",
       "cat.wall": "牆",
@@ -1370,6 +1921,8 @@ window.MAP_ZH_LABELS = {
       "flash.loadFail": "載入失敗：",
       "flash.copied": "已複製到剪貼簿",
       "flash.copiedCompat": "已複製（相容模式）",
+      "flash.applied": "已複製 /mappaste 指令，去遊戲聊天框 Ctrl+V 貼上",
+      "flash.appliedFail": "複製失敗，請手動複製下方文字框內容",
       "flash.filled": "已鋪滿：",
       "oak": "橡木地板",
       "flash.cleared": "已清空",
@@ -1399,7 +1952,6 @@ window.MAP_ZH_LABELS = {
       "redo": "↷ Redo",
       "fillFloor": "Fill floor",
       "clear": "Clear",
-      "example": "Example",
       "genCode": "Generate code",
       "importFile": "Import file",
       "exportFile": "Export file",
@@ -1409,6 +1961,7 @@ window.MAP_ZH_LABELS = {
       "panel.title": "mappaste data string",
       "output.ph": "Click 'Generate code' to fill, or paste an existing mappaste string",
       "copy": "Copy",
+      "applyGame": "Apply to Game",
       "hint.import": "Paste a string into the box and press Ctrl+V to auto-detect and load the map. Paste the final string into the game chat as /mappaste <string> to lay it. Note: light/tint Effects are not part of the mappaste string and must be set in-game.",
       "cat.floor": "Floor",
       "cat.wall": "Wall",
@@ -1460,6 +2013,8 @@ window.MAP_ZH_LABELS = {
       "flash.loadFail": "Load failed: ",
       "flash.copied": "Copied to clipboard",
       "flash.copiedCompat": "Copied (compatibility)",
+      "flash.applied": "/mappaste command copied — paste in BC chat (Ctrl+V)",
+      "flash.appliedFail": "Copy failed, please copy manually from the text box",
       "flash.filled": "Filled: ",
       "oak": "Oak wood",
       "flash.cleared": "Cleared",
@@ -1489,7 +2044,6 @@ window.MAP_ZH_LABELS = {
       "redo": "↷ Wiederholen",
       "fillFloor": "Boden füllen",
       "clear": "Leeren",
-      "example": "Beispiel",
       "genCode": "Code erzeugen",
       "importFile": "Datei importieren",
       "exportFile": "Datei exportieren",
@@ -1499,6 +2053,7 @@ window.MAP_ZH_LABELS = {
       "panel.title": "mappaste-Datenstring",
       "output.ph": "Auf 'Code erzeugen' klicken zum Füllen, oder einen vorhandenen mappaste-String einfügen",
       "copy": "Kopieren",
+      "applyGame": "Im Spiel anwenden",
       "hint.import": "Einen String in das Feld einfügen und Strg+V drücken, um die Karte automatisch zu erkennen und zu laden. Den finalen String im Spielchat als /mappaste <string> einfügen. Hinweis: Licht/Farb-Effekte sind nicht Teil des mappaste-Strings und müssen im Spiel gesetzt werden.",
       "cat.floor": "Boden",
       "cat.wall": "Wand",
@@ -1550,6 +2105,8 @@ window.MAP_ZH_LABELS = {
       "flash.loadFail": "Laden fehlgeschlagen: ",
       "flash.copied": "In Zwischenablage kopiert",
       "flash.copiedCompat": "Kopiert (Kompatibilität)",
+      "flash.applied": "/mappaste-Befehl kopiert — im BC-Chat einfügen (Ctrl+V)",
+      "flash.appliedFail": "Kopieren fehlgeschlagen, bitte manuell kopieren",
       "flash.filled": "Gefüllt: ",
       "oak": "Eichenholz",
       "flash.cleared": "Geleert",
@@ -1579,7 +2136,6 @@ window.MAP_ZH_LABELS = {
       "redo": "↷ Rétablir",
       "fillFloor": "Remplir le sol",
       "clear": "Effacer",
-      "example": "Exemple",
       "genCode": "Générer le code",
       "importFile": "Importer un fichier",
       "exportFile": "Exporter un fichier",
@@ -1589,6 +2145,7 @@ window.MAP_ZH_LABELS = {
       "panel.title": "Chaîne mappaste",
       "output.ph": "Cliquez sur 'Générer le code' pour remplir, ou collez une chaîne mappaste existante",
       "copy": "Copier",
+      "applyGame": "Appliquer au jeu",
       "hint.import": "Collez une chaîne dans le champ et appuyez sur Ctrl+V pour la détecter et charger la carte automatiquement. Collez la chaîne finale dans le chat du jeu via /mappaste <chaîne> pour la poser. Note : les effets de lumière/teinte ne font pas partie de la chaîne mappaste et doivent être réglés en jeu.",
       "cat.floor": "Sol",
       "cat.wall": "Mur",
@@ -1640,6 +2197,8 @@ window.MAP_ZH_LABELS = {
       "flash.loadFail": "Échec du chargement : ",
       "flash.copied": "Copié dans le presse-papiers",
       "flash.copiedCompat": "Copié (compatibilité)",
+      "flash.applied": "Commande /mappaste copiée — coller dans le chat BC (Ctrl+V)",
+      "flash.appliedFail": "Échec de la copie, veuillez copier manuellement",
       "flash.filled": "Rempli : ",
       "oak": "Bois de chêne",
       "flash.cleared": "Effacé",
@@ -1669,7 +2228,6 @@ window.MAP_ZH_LABELS = {
       "redo": "↷ Повтор",
       "fillFloor": "Залить пол",
       "clear": "Очистить",
-      "example": "Пример",
       "genCode": "Создать код",
       "importFile": "Импорт файла",
       "exportFile": "Экспорт файла",
@@ -1679,6 +2237,7 @@ window.MAP_ZH_LABELS = {
       "panel.title": "Строка mappaste",
       "output.ph": "Нажмите 'Создать код' для заполнения или вставьте существующую строку mappaste",
       "copy": "Копировать",
+      "applyGame": "Применить к игре",
       "hint.import": "Вставьте строку в поле и нажмите Ctrl+V, чтобы автоматически распознать и загрузить карту. Вставьте итоговую строку в чат игры как /mappaste <строка> для укладки. Примечание: эффекты света/окраски не входят в строку mappaste и задаются в игре.",
       "cat.floor": "Пол",
       "cat.wall": "Стена",
@@ -1730,6 +2289,8 @@ window.MAP_ZH_LABELS = {
       "flash.loadFail": "Ошибка загрузки: ",
       "flash.copied": "Скопировано в буфер",
       "flash.copiedCompat": "Скопировано (совместимость)",
+      "flash.applied": "Команда /mappaste скопирована — вставьте в чат BC (Ctrl+V)",
+      "flash.appliedFail": "Ошибка копирования, скопируйте вручную из текстового поля",
       "flash.filled": "Залито: ",
       "oak": "Дуб",
       "flash.cleared": "Очищено",
@@ -1759,7 +2320,6 @@ window.MAP_ZH_LABELS = {
       "redo": "↷ Повторити",
       "fillFloor": "Залити підлогу",
       "clear": "Очистити",
-      "example": "Приклад",
       "genCode": "Створити код",
       "importFile": "Імпорт файлу",
       "exportFile": "Експорт файлу",
@@ -1769,6 +2329,7 @@ window.MAP_ZH_LABELS = {
       "panel.title": "Рядок mappaste",
       "output.ph": "Натисніть 'Створити код' для заповнення або вставте наявний рядок mappaste",
       "copy": "Копіювати",
+      "applyGame": "Застосувати до гри",
       "hint.import": "Вставте рядок у поле й натисніть Ctrl+V, щоб автоматично розпізнати й завантажити карту. Вставте фінальний рядок у чат гри як /mappaste <рядок> для укладання. Примітка: ефекти світла/відтінку не входять у рядок mappaste й задаються в грі.",
       "cat.floor": "Підлога",
       "cat.wall": "Стіна",
@@ -1820,6 +2381,8 @@ window.MAP_ZH_LABELS = {
       "flash.loadFail": "Помилка завантаження: ",
       "flash.copied": "Скопійовано в буфер",
       "flash.copiedCompat": "Скопійовано (сумісність)",
+      "flash.applied": "Команду /mappaste скопійовано — вставте у чат BC (Ctrl+V)",
+      "flash.appliedFail": "Помилка копіювання, скопіюйте вручну з текстового поля",
       "flash.filled": "Залито: ",
       "oak": "Дуб",
       "flash.cleared": "Очищено",
@@ -2317,14 +2880,14 @@ window.MAP_ZH_LABELS = {
     // only left (paint) / right (erase) act on cells; middle is reserved for panning
     if (e.button !== 0 && e.button !== 2) return;
     e.preventDefault();
-    if (e.button === 2) { // right click = erase stroke
-      pushHistory(); state.mouseDown = true; state.eraseStroke = true; eraseCell(x, y); return;
+    if (e.button === 2) { // right click = erase stroke (history committed on mouseup)
+      state.mouseDown = true; state.eraseStroke = true; eraseCell(x, y); return;
     }
-    if (state.tool === "fill") { pushHistory(); floodFill(x, y); return; }
+    if (state.tool === "fill") { floodFill(x, y); pushHistory(); return; }
     if (state.tool === "brush") {
-      pushHistory(); state.mouseDown = true;
+      state.mouseDown = true;
       if (state.eraser) eraseCell(x, y); else paintCell(x, y);
-      return;
+      return; // stroke committed to history on mouseup (post-state checkpoint)
     }
     // rect / line: begin preview stroke
     state.dragBase = snapshot();
@@ -2354,7 +2917,9 @@ window.MAP_ZH_LABELS = {
   function onDocUp() {
     if (!state.mouseDown) return;
     if ((state.tool === "rect" || state.tool === "line") && state.dragBase) {
-      pushHistory(); // commit the previewed shape
+      pushHistory(); // commit the finished shape (post-state checkpoint)
+    } else if (state.tool === "brush" || state.eraseStroke) {
+      pushHistory(); // commit a completed paint/erase stroke (post-state checkpoint)
     }
     state.mouseDown = false; state.dragStart = null; state.dragBase = null; state.eraseStroke = false;
   }
@@ -2421,32 +2986,17 @@ window.MAP_ZH_LABELS = {
       (msg ? (ok ? `<span class="ok">${msg}</span>` : `<span class="err">${msg}</span>`) : (ok ? `<span class="ok">${T("stats.valid")}</span>` : `<span class="err">${T("stats.invalid")}</span>`));
   }
   function clearMap() {
-    pushHistory();
     state.tilesGrid = MapLib.createGrid(OAK);
     state.objGrid = MapLib.createGrid(BLANK);
     renderGrid(); document.getElementById("output").value = "";
-    updateStats(true, 0, T("flash.cleared"));
+    updateStats(true, 0, T("flash.cleared")); pushHistory();
   }
   function fillFloor() {
-    pushHistory();
     const sel = state.brush && state.brush.layer === "tiles" ? state.brush : null;
     const id = sel ? sel.id : OAK;
     state.tilesGrid = MapLib.createGrid(id);
     renderGrid();
-    flash(T("flash.filled") + (sel ? I18N.labelForComp(sel.comp) : T("oak")));
-  }
-  function loadExample() {
-    const DOOR = MapLib.idByStyle("WallPath:WoodLockedGold");
-    const KEY = MapLib.idByStyle("FloorDecoration:KeyGold");
-    const STATUE = MapLib.idByStyle("FloorObstacle:Statue");
-    const ENTRY = MapLib.idByStyle("FloorDecoration:EntryFlag");
-    const t = MapLib.createGrid(OAK), o = MapLib.createGrid(BLANK);
-    for (let x = 0; x < W; x++) { t[0][x] = MapLib.idByStyle("Wall:MixedWood"); t[H - 1][x] = MapLib.idByStyle("Wall:MixedWood"); }
-    for (let y = 0; y < H; y++) { t[y][0] = MapLib.idByStyle("Wall:MixedWood"); t[y][W - 1] = MapLib.idByStyle("Wall:MixedWood"); }
-    o[0][20] = DOOR; o[5][20] = KEY; o[12][10] = STATUE; o[2][20] = ENTRY;
-    pushHistory();
-    state.tilesGrid = t; state.objGrid = o;
-    renderGrid(); exportStr();
+    flash(T("flash.filled") + (sel ? I18N.labelForComp(sel.comp) : T("oak"))); pushHistory();
   }
   function copyOutput() {
     const ta = document.getElementById("output");
@@ -2455,6 +3005,17 @@ window.MAP_ZH_LABELS = {
     navigator.clipboard.writeText(ta.value).then(
       () => flash(T("flash.copied")),
       () => { document.execCommand("copy"); flash(T("flash.copiedCompat")); }
+    );
+  }
+  function applyToGame() {
+    // 先确保已导出
+    const str = exportStr();
+    if (!str || str.startsWith("ERROR")) return;
+    // 复制 /mappaste <串> 到剪贴板，用户去游戏聊天框 Ctrl+V 即可
+    const cmd = "/mappaste " + str;
+    navigator.clipboard.writeText(cmd).then(
+      () => flash(T("flash.applied") + " ✓"),
+      () => { flash(T("flash.appliedFail")); }
     );
   }
   function flash(msg) {
@@ -2594,7 +3155,6 @@ window.MAP_ZH_LABELS = {
     setText("btnRedo", T("redo")); setAttr("btnRedo", "title", T("redo") + " (Ctrl+Y)");
     setText("btnFill", T("fillFloor")); setAttr("btnFill", "title", T("fillFloor"));
     setText("btnClear", T("clear"));
-    setText("btnExample", T("example"));
     setText("btnExport", T("genCode")); setAttr("btnExport", "title", T("genCode"));
     setText("btnFileImport", T("importFile")); setAttr("btnFileImport", "title", T("importFile"));
     setText("btnFileExport", T("exportFile")); setAttr("btnFileExport", "title", T("exportFile"));
@@ -2615,6 +3175,7 @@ window.MAP_ZH_LABELS = {
     setText("panelTitle", T("panel.title"));
     const out = document.getElementById("output"); if (out) out.placeholder = T("output.ph");
     setText("btnCopy", T("copy"));
+    setText("btnApplyGame", T("applyGame"));
     const hint = document.getElementById("hintImport"); if (hint) hint.innerHTML = T("hint.import");
     setText("stageHint", T("stage.hint"));
     // language label + select value
@@ -2645,9 +3206,9 @@ window.MAP_ZH_LABELS = {
     document.getElementById("typeSel").addEventListener("change", (e) => { state.type = e.target.value; });
     document.getElementById("btnClear").addEventListener("click", clearMap);
     document.getElementById("btnFill").addEventListener("click", fillFloor);
-    document.getElementById("btnExample").addEventListener("click", loadExample);
     document.getElementById("btnExport").addEventListener("click", exportStr);
     document.getElementById("btnCopy").addEventListener("click", copyOutput);
+    document.getElementById("btnApplyGame").addEventListener("click", applyToGame);
     document.getElementById("btnFileExport").addEventListener("click", exportFile);
     document.getElementById("btnFileImport").addEventListener("click", () => {
       const fi = document.getElementById("fileImport");
@@ -2752,5 +3313,264 @@ window.MAP_ZH_LABELS = {
   else init();
 })();
 </script>
+
+  <script>
+  // ===== 主题切换 + 音效 + 切换过渡 =====
+  (function () {
+    "use strict";
+    var html = document.documentElement;
+    var themeSel = document.getElementById("themeSel");
+    var btnMute = document.getElementById("btnMute");
+    var overlay = document.getElementById("themeLoading");
+    var tlText = document.getElementById("tlText");
+
+    var THEME_KEY = "bc-map-theme";
+    var MUTE_KEY = "bc-map-mute";
+
+    var LOADING_TEXT = {
+      classic: "正在恢复工作台…",
+      apple: "正在整理桌面…",
+      parchment: "正在铺开羊皮卷…",
+      brutalist: "正在校准图纸…"
+    };
+
+    var savedTheme = "classic";
+    try { savedTheme = localStorage.getItem(THEME_KEY) || "classic"; } catch (e) {}
+    themeSel.value = savedTheme;
+    applyTheme(savedTheme);
+
+    function applyTheme(t) {
+      if (!t || t === "classic") html.removeAttribute("data-theme");
+      else html.setAttribute("data-theme", t);
+    }
+
+    // ---- 音效引擎（Web Audio，无外部文件） ----
+    var audioCtx = null;
+    var muted = false;
+    try { muted = localStorage.getItem(MUTE_KEY) === "1"; } catch (e) {}
+    function refreshMute() {
+      btnMute.textContent = muted ? "音效：关" : "音效：开";
+      btnMute.style.opacity = muted ? ".5" : "1";
+    }
+    refreshMute();
+
+    function ensureCtx() {
+      if (!audioCtx) {
+        var AC = window.AudioContext || window.webkitAudioContext;
+        if (AC) audioCtx = new AC();
+      }
+      if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
+      return audioCtx;
+    }
+
+    // 不同主题不同的音色性格
+    var SOUND_PROFILE = {
+      classic:    { type: "triangle", freq: 520, dur: .07, gain: .05 },
+      apple:      { type: "sine",     freq: 660, dur: .09, gain: .05 },
+      parchment:  { type: "triangle", freq: 330, dur: .13, gain: .05 },
+      brutalist:  { type: "square",   freq: 175, dur: .05, gain: .04 }
+    };
+
+    function currentTheme() {
+      return html.getAttribute("data-theme") || "classic";
+    }
+
+    function playClick() {
+      if (muted) return;
+      var ctx = ensureCtx();
+      if (!ctx) return;
+      var p = SOUND_PROFILE[currentTheme()] || SOUND_PROFILE.classic;
+      try {
+        var o = ctx.createOscillator();
+        var g = ctx.createGain();
+        o.type = p.type;
+        o.frequency.value = p.freq;
+        g.gain.setValueAtTime(p.gain, ctx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + p.dur);
+        o.connect(g); g.connect(ctx.destination);
+        o.start();
+        o.stop(ctx.currentTime + p.dur);
+      } catch (e) {}
+    }
+
+    function playTransitionSound() {
+      if (muted) return;
+      var ctx = ensureCtx();
+      if (!ctx) return;
+      var p = SOUND_PROFILE[currentTheme()] || SOUND_PROFILE.classic;
+      try {
+        var o = ctx.createOscillator();
+        var g = ctx.createGain();
+        o.type = p.type;
+        var base = p.freq;
+        o.frequency.setValueAtTime(base * 0.6, ctx.currentTime);
+        o.frequency.exponentialRampToValueAtTime(base * 1.6, ctx.currentTime + 0.18);
+        g.gain.setValueAtTime(p.gain * 1.2, ctx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.3);
+        o.connect(g); g.connect(ctx.destination);
+        o.start();
+        o.stop(ctx.currentTime + 0.3);
+      } catch (e) {}
+    }
+
+    var loadingTimer = null;
+    function playThemeTransition(theme) {
+      tlText.textContent = LOADING_TEXT[theme] || LOADING_TEXT.classic;
+      overlay.classList.add("show");
+      playTransitionSound();
+      if (loadingTimer) clearTimeout(loadingTimer);
+      loadingTimer = setTimeout(function () {
+        overlay.classList.remove("show");
+      }, 720);
+    }
+
+    themeSel.addEventListener("change", function () {
+      var v = themeSel.value;
+      try { localStorage.setItem(THEME_KEY, v); } catch (e) {}
+      applyTheme(v);
+      playThemeTransition(v);
+
+      // 切换后重新触发苹果风 stagger 动画
+      if (v === "apple") {
+        var items = document.querySelectorAll(".pal-item");
+        items.forEach(function(el, i) {
+          el.style.animation = "none";
+          el.offsetHeight; // force reflow
+          el.style.animationDelay = (i * .02) + "s";
+          el.style.animation = "";
+        });
+      }
+    });
+
+    btnMute.addEventListener("click", function () {
+      muted = !muted;
+      try { localStorage.setItem(MUTE_KEY, muted ? "1" : "0"); } catch (e) {}
+      refreshMute();
+      playClick();
+    });
+
+    // 交互音效：点击按钮 / 工具 / 调色板 / 分类（不覆盖下拉框自身）
+    document.addEventListener("click", function (e) {
+      var t = e.target;
+      if (!t) return;
+      var isButton = t.tagName === "BUTTON";
+      var matched = isButton ||
+        (t.classList && (t.classList.contains("tool-btn") || t.classList.contains("pal-item") ||
+         t.classList.contains("cat-group-title") || t.classList.contains("cat-sub-item") ||
+         t.id === "catMenuBtn"));
+      if (matched) playClick();
+    }, true);
+
+    // 苹果风：调色板 stagger 入场延迟分配
+    (function applyStagger() {
+      if (currentTheme() !== "apple") return;
+      var items = document.querySelectorAll(".pal-item");
+      items.forEach(function(el, i) {
+        el.style.animationDelay = (i * .02) + "s";
+      });
+    })();
+
+    // ===== 自定义下拉框：把原生 <select> 包成 .c-select 组件 =====
+    // 原生 select 已被 CSS 隐藏（display:none），这里生成自定义触发器 + 选项面板，
+    // 选中后写回原生 select 的值并派发 change 事件，从而兼容 editor-ui.js 的监听。
+    (function initCustomSelects() {
+      function build(sel) {
+        if (!sel || sel.parentNode.classList.contains("c-select")) return;
+        var wrap = document.createElement("div");
+        wrap.className = "c-select";
+        sel.parentNode.insertBefore(wrap, sel);
+        wrap.appendChild(sel); // 原生 select 移入 wrapper（保持 id 不变）
+
+        var trigger = document.createElement("div");
+        trigger.className = "c-select-trigger";
+        wrap.appendChild(trigger);
+
+        var dd = document.createElement("div");
+        dd.className = "c-select-dropdown";
+        wrap.appendChild(dd);
+
+        function syncOptions() {
+          dd.innerHTML = "";
+          Array.prototype.forEach.call(sel.options, function (opt, idx) {
+            var row = document.createElement("div");
+            row.className = "c-opt";
+            row.textContent = opt.textContent;
+            row.dataset.value = opt.value;
+            row.dataset.index = idx;
+            if (opt.value === sel.value) {
+              row.classList.add("sel");
+              trigger.textContent = opt.textContent;
+            }
+            dd.appendChild(row);
+            row.addEventListener("click", function (e) {
+              e.stopPropagation();
+              sel.selectedIndex = idx;
+              trigger.textContent = opt.textContent;
+              Array.prototype.forEach.call(dd.children, function (c) { c.classList.remove("sel"); });
+              row.classList.add("sel");
+              close();
+              sel.dispatchEvent(new Event("change", { bubbles: true }));
+            });
+          });
+        }
+
+        function open() {
+          closeOthers(wrap);
+          wrap.classList.add("open");
+        }
+        function close() { wrap.classList.remove("open"); }
+
+        trigger.addEventListener("click", function (e) {
+          e.stopPropagation();
+          if (wrap.classList.contains("open")) close();
+          else open();
+        });
+
+        // 原生 select 若被外部改值（如语言回写 / 导入），同步 UI
+        sel.addEventListener("change", function () {
+          var o = sel.options[sel.selectedIndex];
+          if (o) trigger.textContent = o.textContent;
+          Array.prototype.forEach.call(dd.children, function (c) {
+            if (c.dataset.value === sel.value) c.classList.add("sel");
+            else c.classList.remove("sel");
+          });
+        });
+
+        syncOptions();
+        // 语言选择项在 initLangSelect 后才填充，监听子树变化重新构建
+        if (sel.id === "langSel") {
+          var mo = new MutationObserver(syncOptions);
+          mo.observe(sel, { childList: true });
+        }
+      }
+
+      function closeOthers(except) {
+        Array.prototype.forEach.call(document.querySelectorAll(".c-select.open"),
+          function (w) { if (w !== except) w.classList.remove("open"); });
+      }
+
+      ["typeSel", "langSel", "themeSel"].forEach(function (id) {
+        build(document.getElementById(id));
+      });
+
+      // 统一在 document 上关闭：仅当点击目标不在任何 .c-select 内时才收起，
+      // 避免“触发按钮刚打开下拉，冒泡到 document 的 closeAll 又立刻把它关掉”的顺序问题。
+      document.addEventListener("click", function (e) {
+        var t = e.target;
+        var inside = t && t.closest && t.closest(".c-select");
+        if (!inside) {
+          Array.prototype.forEach.call(document.querySelectorAll(".c-select.open"),
+            function (w) { w.classList.remove("open"); });
+        }
+      });
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape") {
+          Array.prototype.forEach.call(document.querySelectorAll(".c-select.open"),
+            function (w) { w.classList.remove("open"); });
+        }
+      });
+    })();
+  })();
+  </script>
 </body>
 </html>

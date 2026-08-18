@@ -418,14 +418,14 @@
     // only left (paint) / right (erase) act on cells; middle is reserved for panning
     if (e.button !== 0 && e.button !== 2) return;
     e.preventDefault();
-    if (e.button === 2) { // right click = erase stroke
-      pushHistory(); state.mouseDown = true; state.eraseStroke = true; eraseCell(x, y); return;
+    if (e.button === 2) { // right click = erase stroke (history committed on mouseup)
+      state.mouseDown = true; state.eraseStroke = true; eraseCell(x, y); return;
     }
-    if (state.tool === "fill") { pushHistory(); floodFill(x, y); return; }
+    if (state.tool === "fill") { floodFill(x, y); pushHistory(); return; }
     if (state.tool === "brush") {
-      pushHistory(); state.mouseDown = true;
+      state.mouseDown = true;
       if (state.eraser) eraseCell(x, y); else paintCell(x, y);
-      return;
+      return; // stroke committed to history on mouseup (post-state checkpoint)
     }
     // rect / line: begin preview stroke
     state.dragBase = snapshot();
@@ -455,7 +455,9 @@
   function onDocUp() {
     if (!state.mouseDown) return;
     if ((state.tool === "rect" || state.tool === "line") && state.dragBase) {
-      pushHistory(); // commit the previewed shape
+      pushHistory(); // commit the finished shape (post-state checkpoint)
+    } else if (state.tool === "brush" || state.eraseStroke) {
+      pushHistory(); // commit a completed paint/erase stroke (post-state checkpoint)
     }
     state.mouseDown = false; state.dragStart = null; state.dragBase = null; state.eraseStroke = false;
   }
@@ -522,32 +524,17 @@
       (msg ? (ok ? `<span class="ok">${msg}</span>` : `<span class="err">${msg}</span>`) : (ok ? `<span class="ok">${T("stats.valid")}</span>` : `<span class="err">${T("stats.invalid")}</span>`));
   }
   function clearMap() {
-    pushHistory();
     state.tilesGrid = MapLib.createGrid(OAK);
     state.objGrid = MapLib.createGrid(BLANK);
     renderGrid(); document.getElementById("output").value = "";
-    updateStats(true, 0, T("flash.cleared"));
+    updateStats(true, 0, T("flash.cleared")); pushHistory();
   }
   function fillFloor() {
-    pushHistory();
     const sel = state.brush && state.brush.layer === "tiles" ? state.brush : null;
     const id = sel ? sel.id : OAK;
     state.tilesGrid = MapLib.createGrid(id);
     renderGrid();
-    flash(T("flash.filled") + (sel ? I18N.labelForComp(sel.comp) : T("oak")));
-  }
-  function loadExample() {
-    const DOOR = MapLib.idByStyle("WallPath:WoodLockedGold");
-    const KEY = MapLib.idByStyle("FloorDecoration:KeyGold");
-    const STATUE = MapLib.idByStyle("FloorObstacle:Statue");
-    const ENTRY = MapLib.idByStyle("FloorDecoration:EntryFlag");
-    const t = MapLib.createGrid(OAK), o = MapLib.createGrid(BLANK);
-    for (let x = 0; x < W; x++) { t[0][x] = MapLib.idByStyle("Wall:MixedWood"); t[H - 1][x] = MapLib.idByStyle("Wall:MixedWood"); }
-    for (let y = 0; y < H; y++) { t[y][0] = MapLib.idByStyle("Wall:MixedWood"); t[y][W - 1] = MapLib.idByStyle("Wall:MixedWood"); }
-    o[0][20] = DOOR; o[5][20] = KEY; o[12][10] = STATUE; o[2][20] = ENTRY;
-    pushHistory();
-    state.tilesGrid = t; state.objGrid = o;
-    renderGrid(); exportStr();
+    flash(T("flash.filled") + (sel ? I18N.labelForComp(sel.comp) : T("oak"))); pushHistory();
   }
   function copyOutput() {
     const ta = document.getElementById("output");
@@ -556,6 +543,17 @@
     navigator.clipboard.writeText(ta.value).then(
       () => flash(T("flash.copied")),
       () => { document.execCommand("copy"); flash(T("flash.copiedCompat")); }
+    );
+  }
+  function applyToGame() {
+    // 先确保已导出
+    const str = exportStr();
+    if (!str || str.startsWith("ERROR")) return;
+    // 复制 /mappaste <串> 到剪贴板，用户去游戏聊天框 Ctrl+V 即可
+    const cmd = "/mappaste " + str;
+    navigator.clipboard.writeText(cmd).then(
+      () => flash(T("flash.applied") + " ✓"),
+      () => { flash(T("flash.appliedFail")); }
     );
   }
   function flash(msg) {
@@ -695,7 +693,6 @@
     setText("btnRedo", T("redo")); setAttr("btnRedo", "title", T("redo") + " (Ctrl+Y)");
     setText("btnFill", T("fillFloor")); setAttr("btnFill", "title", T("fillFloor"));
     setText("btnClear", T("clear"));
-    setText("btnExample", T("example"));
     setText("btnExport", T("genCode")); setAttr("btnExport", "title", T("genCode"));
     setText("btnFileImport", T("importFile")); setAttr("btnFileImport", "title", T("importFile"));
     setText("btnFileExport", T("exportFile")); setAttr("btnFileExport", "title", T("exportFile"));
@@ -716,6 +713,7 @@
     setText("panelTitle", T("panel.title"));
     const out = document.getElementById("output"); if (out) out.placeholder = T("output.ph");
     setText("btnCopy", T("copy"));
+    setText("btnApplyGame", T("applyGame"));
     const hint = document.getElementById("hintImport"); if (hint) hint.innerHTML = T("hint.import");
     setText("stageHint", T("stage.hint"));
     // language label + select value
@@ -746,9 +744,9 @@
     document.getElementById("typeSel").addEventListener("change", (e) => { state.type = e.target.value; });
     document.getElementById("btnClear").addEventListener("click", clearMap);
     document.getElementById("btnFill").addEventListener("click", fillFloor);
-    document.getElementById("btnExample").addEventListener("click", loadExample);
     document.getElementById("btnExport").addEventListener("click", exportStr);
     document.getElementById("btnCopy").addEventListener("click", copyOutput);
+    document.getElementById("btnApplyGame").addEventListener("click", applyToGame);
     document.getElementById("btnFileExport").addEventListener("click", exportFile);
     document.getElementById("btnFileImport").addEventListener("click", () => {
       const fi = document.getElementById("fileImport");

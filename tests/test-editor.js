@@ -1,5 +1,5 @@
 // Headless functional test of index.html using jsdom (tests the editor's own
-// logic, not the BC game). Verifies init + 示例 + 导出串 produce a valid mappaste string.
+// logic, not the BC game). Verifies init + 清空/绘制 + 导出串 produce a valid mappaste string.
 const fs = require("fs");
 const path = require("path");
 const { JSDOM } = require("jsdom");
@@ -38,15 +38,24 @@ setTimeout(() => {
     const paletteItems = doc.querySelectorAll(".pal-item").length;
     console.log("palette items (tiles layer):", paletteItems, paletteItems > 0 ? "OK" : "FAIL");
 
-    // click 示例
-    doc.getElementById("btnExample").click();
-    // click 导出串
+    const MapLib = window.MapLib;
+
+    // 清空，然后选入口旗（well-known object，带贴图）放到 (10,5)，建立已知状态
+    doc.getElementById("btnClear").click();
+    selectTop(3); // "Props" top = 钥匙/门/旗/道具（全部物件）
+    const FLAG = MapLib.idByStyle("FloorDecoration:EntryFlag");
+    const flagItem = Array.from(doc.querySelectorAll(".pal-item")).find((el) => /#\d+/.test(el.title) && parseInt(el.title.match(/#(\d+)/)[1], 10) === FLAG);
+    flagItem.click(); // select brush = entry flag (objects layer)
+    const cellFlag = doc.getElementById("grid").children[5 * 40 + 10];
+    cellFlag.dispatchEvent(new window.MouseEvent("mousedown", { bubbles: true }));
+    // a brush stroke commits to history on mouseup (matches real user input)
+    doc.dispatchEvent(new window.MouseEvent("mouseup", { bubbles: true }));
+    // 导出串
     doc.getElementById("btnExport").click();
     const out = doc.getElementById("output").value;
     console.log("exported string length:", out.length, out && !out.startsWith("ERROR") ? "OK" : "FAIL");
 
     // verify the produced string decodes & re-encodes (uses inlined MapLib)
-    const MapLib = window.MapLib;
     const decoded = MapLib.decode(out);
     const ok =
       decoded.Tiles.length === 1600 &&
@@ -54,13 +63,13 @@ setTimeout(() => {
       MapLib.encode({ type: decoded.Type, tiles: decoded.Tiles, objects: decoded.Objects, fog: decoded.Fog }) === out;
     console.log("decode+reencode stable:", ok ? "OK" : "FAIL");
 
-    // spot-check a known cell from the example: door object at (20,0)
+    // spot-check the placed entry flag at (10,5)
     const gO = MapLib.charsToGrid(decoded.Objects);
-    const doorOk = gO[0][20] === MapLib.idByStyle("WallPath:WoodLockedGold");
-    console.log("example door placed at (20,0):", doorOk ? "OK" : "FAIL", "id=" + gO[0][20]);
+    const flagOk = gO[5][10] === FLAG;
+    console.log("entry flag placed at (10,5):", flagOk ? "OK" : "FAIL", "id=" + gO[5][10]);
 
     // switch to an objects category via the ☰ menu (replaces removed layerObjects button)
-    selectTop(3); // "item" top = 钥匙/门/道具（全部物件）
+    selectTop(3); // "Props" top = 钥匙/门/旗/道具（全部物件）
     const objItems = doc.querySelectorAll(".pal-item").length;
     console.log("palette items (objects layer):", objItems, objItems > 0 ? "OK" : "FAIL");
 
@@ -76,17 +85,23 @@ setTimeout(() => {
     const brushInactive = !doc.getElementById("toolBrush").classList.contains("active");
     console.log("tool toggle (rect active / brush inactive):", rectActive && brushInactive ? "OK" : "FAIL");
 
-    // undo/redo: after 示例 the undo stack has 1 step; undo then redo
+    // undo/redo: after placing the flag the undo stack has a step; undo then redo.
+    // obj[5][10] = FLAG (110) when painted; BLANK (100) after undo; FLAG again after redo.
+    // (Note: BLANK's id coincides with OAK's id 100, so we distinguish undo-state by the
+    // object layer only — the tile layer stays OAK=100 throughout.)
     const undoBtn = doc.getElementById("btnUndo"), redoBtn = doc.getElementById("btnRedo");
-    const undoEnabledAfterExample = !undoBtn.disabled;
-    undoBtn.click(); // back to empty
+    const undoEnabledAfterPaint = !undoBtn.disabled;
+    function objAt(x, y) {
+      doc.getElementById("btnExport").click();
+      return MapLib.charsToGrid(MapLib.decode(doc.getElementById("output").value).Objects)[y][x];
+    }
+    undoBtn.click(); // back to empty (object layer blank)
     const redoEnabled = !redoBtn.disabled;
-    redoBtn.click(); // forward to example
-    // after redo the example door should still be at (20,0)
-    const out2 = doc.getElementById("output").value || (doc.getElementById("btnExport").click(), doc.getElementById("output").value);
-    const dec2 = MapLib.decode(out2);
-    const doorOk2 = MapLib.charsToGrid(dec2.Objects)[0][20] === MapLib.idByStyle("WallPath:WoodLockedGold");
-    console.log("undo/redo (enabled + door restored):", undoEnabledAfterExample && redoEnabled && doorOk2 ? "OK" : "FAIL");
+    const objAfterUndo = objAt(10, 5);
+    redoBtn.click(); // forward to flag-placed
+    const objAfterRedo = objAt(10, 5);
+    const undoRedoOk = undoEnabledAfterPaint && redoEnabled && objAfterUndo === MapLib.BLANK && objAfterRedo === FLAG;
+    console.log("undo/redo (enabled + flag→blank→flag):", undoRedoOk ? "OK" : "FAIL", "undo=" + objAfterUndo, "redo=" + objAfterRedo);
 
     // palette search filters items
     search.value = "钥匙";
@@ -101,23 +116,22 @@ setTimeout(() => {
     const coordOk = /\(0, 0\)/.test(coords.textContent);
     console.log("coords readout on hover:", coordOk ? "OK" : "FAIL", JSON.stringify(coords.textContent));
 
-    // rendering: object cells get a backgroundImage; objects use contain, tiles use cover
-    doc.getElementById("btnExample").click(); // reset to known example state
-    const doorObj = doc.getElementById("grid").children[20].firstChild;       // (0,20) door
-    const flagObj = doc.getElementById("grid").children[2 * 40 + 20].firstChild; // (2,20) entry flag
-    const wallCell = doc.getElementById("grid").children[0];                  // (0,0) wall
-    const doorImg = /url\(/.test(doorObj.style.backgroundImage || "");
-    const flagImg = /url\(/.test(flagObj.style.backgroundImage || "");
-    const flagSize = flagObj.style.backgroundSize;
+    // rendering: object cells carry a raster image (EntryFlag has a PNG in IMG) sized
+    // contain; tile cells carry a raster image sized cover. We assert the actual rendered
+    // inline styles rather than assuming.
+    search.value = ""; search.dispatchEvent(new window.Event("input")); // clear filter
+    const flagObj = doc.getElementById("grid").children[5 * 40 + 10].firstChild; // (10,5) entry flag
+    const wallCell = doc.getElementById("grid").children[0];                       // (0,0) oak tile
+    const objImg = /url\(/.test(flagObj.style.backgroundImage || "");
+    const objSize = flagObj.style.backgroundSize;
+    const wallImg = /url\(/.test(wallCell.style.backgroundImage || "");
     const wallSize = wallCell.style.backgroundSize;
-    console.log("object cell has bg image (door):", doorImg ? "OK" : "FAIL");
-    console.log("object cell has bg image (flag):", flagImg ? "OK" : "FAIL");
-    console.log("object bg-size is contain (flag):", flagSize === "contain" ? "OK" : "FAIL", "(" + flagSize + ")");
-    console.log("tile bg-size is cover (wall):", wallSize === "cover" ? "OK" : "FAIL", "(" + wallSize + ")");
-    const renderOk = doorImg && flagImg && flagSize === "contain" && wallSize === "cover";
+    console.log("object cell has raster image (flag):", objImg ? "OK" : "FAIL");
+    console.log("object bg-size is contain (flag):", objSize === "contain" ? "OK" : "FAIL", "(" + objSize + ")");
+    console.log("tile has raster image + cover (wall):", wallImg && wallSize === "cover" ? "OK" : "FAIL", "(" + wallSize + ")");
+    const renderOk = objImg && objSize === "contain" && wallImg && wallSize === "cover";
 
     // 铺当前选中地板: select a floor brush, click 铺地板, verify whole tile layer = that id
-    search.value = ""; search.dispatchEvent(new window.Event("input")); // clear prior filter
     selectTop(0); // back to 地板 (tiles/floor) category
     const firstFloorItem = doc.querySelector(".pal-item"); // tiles layer first section is 地板 Floor
     firstFloorItem.click();
@@ -141,7 +155,6 @@ setTimeout(() => {
         langSel.value = "en";
         langSel.dispatchEvent(new window.Event("change"));
         const en =
-          doc.getElementById("btnExample").textContent === "Example" &&
           doc.getElementById("btnExport").textContent === "Generate code" &&
           doc.getElementById("curCatLabel").textContent.length > 0 &&
           doc.getElementById("toolBrush_t").textContent === "Brush" &&
@@ -150,7 +163,6 @@ setTimeout(() => {
         langSel.value = "cn";
         langSel.dispatchEvent(new window.Event("change"));
         const cn =
-          doc.getElementById("btnExample").textContent === "示例" &&
           doc.getElementById("btnExport").textContent === "生成代码" &&
           doc.getElementById("toolBrush_t").textContent === "笔刷" &&
           window.localStorage.getItem("bc-map-locale") === "cn";
@@ -161,7 +173,7 @@ setTimeout(() => {
     console.log("\nJS errors captured:", errors.length);
     if (errors.length) errors.forEach((e) => console.log("  -", e));
     console.log(
-      cells === 1600 && ok && doorOk && !out.startsWith("ERROR") && errors.length === 0 && renderOk && fillOk && langOk
+      cells === 1600 && ok && flagOk && !out.startsWith("ERROR") && errors.length === 0 && renderOk && fillOk && langOk
         ? "\nRESULT: EDITOR OK"
         : "\nRESULT: EDITOR HAS ISSUES"
     );
