@@ -3272,19 +3272,15 @@ window.MAP_ZH_LABELS = {
       const _origPush = pushHistory;
       pushHistory = function () { const r = _origPush.apply(this, arguments); liveThrottled(); return r; };
 
-      // 「应用到游戏」按钮（动态注入，避免改模板）
-      const exportBtn = document.getElementById("btnExport");
-      if (exportBtn && exportBtn.parentNode) {
-        const applyBtn = document.createElement("button");
-        applyBtn.id = "btnApplyGame";
-        applyBtn.textContent = "应用到游戏";
-        applyBtn.title = "把当前地图发回 BMM（自动复制 mappaste 串）";
-        applyBtn.style.marginLeft = "6px";
+      // 「应用到游戏」按钮已在 HTML 模板中定义（id=btnApplyGame，调 applyToGame 复制剪贴板）
+      // 若从 BMM 打开（联动模式），增强其行为：复制剪贴板 + 同步回传 BMM
+      const applyBtn = document.getElementById("btnApplyGame");
+      if (applyBtn && window.opener) {
+        const _origHandler = applyBtn.onclick || null;
         applyBtn.addEventListener("click", function () {
           const s = exportStr();
-          if (s) { send({ type: "export", map: s }); if (typeof flash === "function") flash("已发送回 BMM，去游戏粘贴 /mappaste"); }
+          if (s) send({ type: "export", map: s });
         });
-        exportBtn.parentNode.insertBefore(applyBtn, exportBtn.nextSibling);
       }
 
       // 标题栏加「BMM联动」标记（用 MutationObserver 防止 i18n 重写标题时丢失）
