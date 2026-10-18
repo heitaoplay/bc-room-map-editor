@@ -25,8 +25,24 @@
     r = Math.max(0, Math.min(255, r + dl)); g = Math.max(0, Math.min(255, g + dl)); b = Math.max(0, Math.min(255, b + dl));
     return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
   }
+  // Colour words inside a style id ("TileLightBlue", "CarpetPink") tint the placeholder block, so even a
+  // part whose thumbnail is missing is distinguishable instead of showing one flat brown.
+  const TOKEN_COLORS = {
+    White: "#e8e8e8", Gray: "#8c9096", Grey: "#8c9096", Black: "#2e2e32", Blue: "#3b6fd0", LightBlue: "#7fb8ea",
+    Green: "#4f9d52", Red: "#c24444", Orange: "#e08a2e", Yellow: "#e6cf45", Pink: "#e58fb6", Purple: "#8a5cc2",
+    Brown: "#8b5e3c", Teal: "#2fa19a", Cyan: "#35b8d0", Beige: "#d8c8a4", Gold: "#e0b83a", Silver: "#b4b8be",
+    Bronze: "#b87333", Magenta: "#c23f9c", Navy: "#1f2f6b", Lime: "#8fd03a", Maroon: "#7a2230", Violet: "#9a63d6",
+  };
+  function tokenColor(style) {
+    const m = String(style || "").match(/(Light)?(White|Gr[ae]y|Black|Blue|Green|Red|Orange|Yellow|Pink|Purple|Brown|Teal|Cyan|Beige|Gold|Silver|Bronze|Magenta|Navy|Lime|Maroon|Violet)(?=[A-Z0-9]|$)/);
+    if (!m) return null;
+    const name = (m[1] && m[2] === "Blue") ? "LightBlue" : m[2];
+    return TOKEN_COLORS[name] || null;
+  }
   function colorFor(comp) {
     const t = comp.type, s = comp.style || "";
+    const tc = imgFor(comp) ? null : tokenColor(s); // only tint the placeholder when there is no thumbnail
+    if (tc) return tc;
     let base;
     if (t === "Wall" || s === "HalfWall") base = "#7f8c9b";
     else if (t === "Floor") base = "#b5895a";
@@ -91,7 +107,7 @@
     { id: "wall.walldeco", top: "wall", labelKey: "cat.walldeco", match: (c) => c.type === "WallDecoration" },
     { id: "wall.banner", top: "wall", labelKey: "cat.banners", match: (c) => c.type === "Banners" },
     { id: "deco.obstacle", top: "deco", labelKey: "cat.obstacle", match: (c) => c.type === "FloorObstacle" },
-    { id: "deco.furniture", top: "deco", labelKey: "cat.furniture", match: (c) => c.type === "FloorDecorationThemed" || c.type === "FloorDecorationExpanding" || c.type === "FloorFoamTiles" || c.type === "ABDL" || c.type === "School" || c.type === "Bathroom" || ((c.type === "FloorDecoration" || c.type === "LivingRoom") && !BEDDING_STYLES.has(c.style)) },
+    { id: "deco.furniture", top: "deco", labelKey: "cat.furniture", match: (c) => (c.layer === "object" && c.style === "Blank") || c.type === "FloorDecorationThemed" || c.type === "FloorDecorationExpanding" || c.type === "FloorFoamTiles" || c.type === "ABDL" || c.type === "School" || c.type === "Bathroom" || ((c.type === "FloorDecoration" || c.type === "LivingRoom") && !BEDDING_STYLES.has(c.style)) },
     { id: "deco.bedding", top: "deco", labelKey: "cat.bedding", match: (c) => c.type === "Bedroom" || ((c.type === "FloorDecoration" || c.type === "LivingRoom") && BEDDING_STYLES.has(c.style)) },
     { id: "deco.party", top: "deco", labelKey: "cat.party", match: (c) => c.type === "FloorDecorationParty" },
     { id: "deco.outdoor", top: "deco", labelKey: "cat.outdoorProps", match: (c) => c.type === "FloorDecorationCamping" },
@@ -110,17 +126,27 @@
     { id: "item", labelKey: "cat2.item", subs: ["item.gate", "item.key", "item.item"] },
     { id: "marker", labelKey: "cat2.marker", subs: ["marker.number", "marker.letter", "marker.icon"] },
   ];
-  function leafDef(id) { return LEAVES.find((l) => l.id === id); }
+  // A part whose `Type` matches none of the rules above (BC introduced a brand-new category) is NOT
+  // dropped or mis-filed: it gets its own sub-group under an automatic "Other (new)" top group,
+  // named after the type, and is fully paintable. Maintainers may add a rule above later (optional).
+  const DYN_LEAVES = {};
+  function leafDef(id) { return LEAVES.find((l) => l.id === id) || DYN_LEAVES[id]; }
   function topDef(id) { return TOPS.find((t) => t.id === id); }
+  function leafLabel(leaf) { return leaf.dynType ? I18N.typeLabel(leaf.dynType) : T(leaf.labelKey); }
   function classify(comp) {
     for (const l of LEAVES) if (l.match(comp)) return l.id;
-    return "deco.furniture"; // safety net — should not normally hit
+    const id = "other:" + comp.layer + ":" + comp.type;
+    if (!DYN_LEAVES[id]) DYN_LEAVES[id] = { id, top: "other", dynType: comp.type, match: (c) => c.layer === comp.layer && c.type === comp.type };
+    return id;
   }
   const LEAF_ITEMS = {};
   [].concat(CAT.tiles, CAT.objects).forEach((c) => {
     const id = classify(c);
     (LEAF_ITEMS[id] = LEAF_ITEMS[id] || []).push(c);
   });
+  if (Object.keys(DYN_LEAVES).length) {
+    TOPS.push({ id: "other", labelKey: "cat2.other", subs: Object.keys(DYN_LEAVES).sort() });
+  }
 
   // ---------- state ----------
   const state = {
@@ -215,13 +241,13 @@
       const all = [].concat(CAT.tiles, CAT.objects).filter(matchSearch);
       const byLeaf = {};
       all.forEach((c) => { const lid = classify(c); (byLeaf[lid] = byLeaf[lid] || []).push(c); });
-      sections = Object.keys(byLeaf).map((lid) => ({ label: T(leafDef(lid).labelKey), items: byLeaf[lid] }));
+      sections = Object.keys(byLeaf).map((lid) => ({ label: leafLabel(leafDef(lid)), items: byLeaf[lid] }));
     } else if (state.category.indexOf(".") === -1) {
       const top = topDef(state.category);
-      sections = (top ? top.subs : []).map((sid) => ({ label: T(leafDef(sid).labelKey), items: LEAF_ITEMS[sid] || [] })).filter((s) => s.items.length);
+      sections = (top ? top.subs : []).map((sid) => ({ label: leafLabel(leafDef(sid)), items: LEAF_ITEMS[sid] || [] })).filter((s) => s.items.length);
     } else {
       const leaf = leafDef(state.category);
-      sections = leaf ? [{ label: T(leaf.labelKey), items: LEAF_ITEMS[state.category] || [] }] : [];
+      sections = leaf ? [{ label: leafLabel(leaf), items: LEAF_ITEMS[state.category] || [] }] : [];
     }
     let total = 0;
     sections.forEach((sec) => {
@@ -285,7 +311,7 @@
         const leaf = leafDef(sid);
         const b = document.createElement("button"); b.type = "button";
         b.className = "cat-sub-item" + (state.category === sid ? " active" : "");
-        b.textContent = T(leaf.labelKey);
+        b.textContent = leafLabel(leaf);
         b.addEventListener("click", (e) => { e.stopPropagation(); selectCategory(sid); });
         subList.appendChild(b);
       });
@@ -301,7 +327,7 @@
     } else {
       const leaf = leafDef(state.category);
       if (!leaf) { el.textContent = ""; return; }
-      el.textContent = T(topDef(leaf.top).labelKey) + " › " + T(leaf.labelKey);
+      el.textContent = T(topDef(leaf.top).labelKey) + " › " + leafLabel(leaf);
     }
   }
   function selectCategory(catId) {

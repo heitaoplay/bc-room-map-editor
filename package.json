@@ -5,10 +5,14 @@
   "private": true,
   "scripts": {
     "build": "node scripts/build-editor.js",
-    "test": "node tests/test-editor.js",
-    "example": "node examples/example.js"
+    "test": "node tests/test-editor.js && node tests/test-sync.js",
+    "example": "node examples/example.js",
+    "sync": "node scripts/sync-upstream.js",
+    "sync:force": "node scripts/sync-upstream.js --force",
+    "sync:check": "node scripts/sync-upstream.js --check-only"
   },
   "devDependencies": {
-    "jsdom": "^24.0.0"
+    "jsdom": "^24.0.0",
+    "opencc-js": "^1.4.2"
   }
 }

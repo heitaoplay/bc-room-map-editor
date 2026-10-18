@@ -30,7 +30,7 @@ jobs:
           node-version: '20'
 
       - name: Install deps
-        run: npm install
+        run: npm ci
 
       - name: Build editor (rebuild index.html from sources)
         run: npm run build

@@ -9,8 +9,9 @@ const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
 
+const ROOT = process.env.BC_ROOT || path.join(__dirname, "..");
 const SRC = process.argv[2] || process.env.BC_MAPDATA || "/tmp/bc-map/MapData.js";
-const OUT = path.join(__dirname, "..", "src", "catalog.json");
+const OUT = path.join(ROOT, "src", "catalog.json");
 
 let code = fs.readFileSync(SRC, "utf8");
 code += "\n;globalThis.__R = { E: AssetsMapDataEffects, T: AssetsMapDataTiles, O: AssetsMapDataObjects };";
@@ -86,6 +87,20 @@ try {
 for (const k of Object.keys(legacy)) if (!byStyle[k]) byStyle[k] = legacy[k];
 
 const catalog = { width: 40, height: 40, blankId: 100, tiles, objects, effects, legacy, byId, byStyle };
+
+// Safety net: if upstream refactors MapData.js and the evaluation "succeeds" but yields far fewer
+// entries than before, refuse to overwrite the catalog (the sync workflow then fails visibly and
+// the previously deployed site stays intact). Set BC_ALLOW_SHRINK=1 to override.
+try {
+	const prev = JSON.parse(fs.readFileSync(OUT, "utf8"));
+	const before = prev.tiles.length + prev.objects.length, after = tiles.length + objects.length;
+	if (after < before * 0.8 && !process.env.BC_ALLOW_SHRINK) {
+		console.error(`REFUSING to write catalog: entries dropped ${before} -> ${after} (>20%). Upstream format may have changed; set BC_ALLOW_SHRINK=1 to force.`);
+		process.exit(2);
+	}
+} catch (e) { /* first run */ }
+if (!tiles.length || !objects.length) { console.error("REFUSING to write catalog: empty tile/object list"); process.exit(2); }
+
 fs.writeFileSync(OUT, JSON.stringify(catalog));
 console.log(`catalog written: ${tiles.length} tiles, ${objects.length} objects, ${effects.length} effects, ${Object.keys(legacy).length} legacy aliases`);
 console.log(`KeyGold id = ${byStyle["Functional:KeyGold"]} (legacy FloorDecoration:KeyGold = ${byStyle["FloorDecoration:KeyGold"]})`);

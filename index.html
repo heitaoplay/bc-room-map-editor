@@ -1487,6 +1487,73 @@ if (typeof define === 'function' && define.amd) {
 	};
 });
 </script>
+  <script>// Auto-label dictionary (Simplified Chinese; the build converts it to Traditional for the "tw" locale).
+//
+// Purpose: when BC adds a new part, nobody has to touch zh-labels.js for it to be usable.
+// i18n.js resolves a label in this order (cn / tw):
+//   1. exact translation in zh-labels.js            ("Floor:CheckerCarpetBlue" -> 蓝色格纹地毯)
+//   2. composed from the tokens below               ("TileMagenta" -> 洋红色地砖)  — only if EVERY token is known
+//   3. BC's own English name from MapData.js        ("Oak Planks")
+//   4. the style id split into words                ("Checker Carpet Rainbow")
+// Unknown words therefore never break anything, they just show in English until someone adds them here.
+// Add words to WORDS / COLORS whenever convenient; it is optional polish, not a requirement.
+window.MAP_ZH_COLORS = {
+  White: "白色", Gray: "灰色", Grey: "灰色", Black: "黑色", Blue: "蓝色", Green: "绿色", Red: "红色",
+  Orange: "橙色", Yellow: "黄色", Pink: "粉色", Purple: "紫色", Brown: "棕色", Teal: "青色",
+  Cyan: "青色", Beige: "米色", Cream: "奶油色", Navy: "藏青色", Lime: "青柠色", Magenta: "洋红色",
+  Maroon: "酒红色", Violet: "紫罗兰色", Turquoise: "绿松石色", Gold: "金色", Silver: "银色", Bronze: "铜色",
+  Rainbow: "彩虹色", Tan: "黄褐色", Olive: "橄榄色", Lavender: "薰衣草色", Mint: "薄荷色", Peach: "桃色",
+  Coral: "珊瑚色", Rose: "玫瑰色", Indigo: "靛蓝色", Ivory: "象牙色", Khaki: "卡其色", Crimson: "深红色",
+};
+window.MAP_ZH_MODIFIERS = { Light: "浅", Dark: "深", Bright: "亮", Pale: "淡", Deep: "深" };
+window.MAP_ZH_WORDS = {
+  // surfaces / materials
+  Floor: "地板", Wall: "墙", Tile: "地砖", Tiles: "地砖", Carpet: "地毯", Checker: "格纹", Padded: "软垫",
+  Latex: "乳胶", Slime: "史莱姆", Honey: "蜂蜜", Foam: "泡沫", Play: "游戏", Wood: "木", Wooden: "木制",
+  Log: "圆木", Stone: "石", Brick: "砖", Metal: "金属", Steel: "钢", Iron: "铁", Glass: "玻璃", Marble: "大理石",
+  Concrete: "水泥", Plank: "木板", Planks: "木板", Oak: "橡木", Pine: "松木", Maple: "枫木", Acacia: "金合欢木",
+  Mahogany: "红木", Mangrove: "红树木", Cherry: "樱桃木", Bamboo: "竹", Tatami: "榻榻米", Hex: "六角",
+  Square: "方格", Round: "圆形", Plain: "素色", Striped: "条纹", Dotted: "圆点", Fancy: "华丽", Royal: "皇家",
+  Dungeon: "地牢", Japanese: "日式", Medieval: "中世纪", Modern: "现代", Old: "旧", New: "新",
+  // nature / outdoor
+  Grass: "草", Dirt: "泥土", Sand: "沙", Gravel: "碎石", Snow: "雪", Ice: "冰", Water: "水", Lava: "岩浆",
+  Leaves: "落叶", Leaf: "叶", Tree: "树", Palm: "棕榈", Bush: "灌木", Flower: "花", Flowers: "花",
+  Plant: "植物", Rock: "岩石", Rocks: "岩石", Mushroom: "蘑菇", Pumpkin: "南瓜", Cactus: "仙人掌",
+  Fire: "火", Torch: "火把", Campfire: "营火", Tent: "帐篷", Lantern: "灯笼", Lamp: "灯", Candle: "蜡烛",
+  Candelabra: "烛台", Spider: "蜘蛛", Web: "网", Cobweb: "蛛网",
+  // furniture / props
+  Chair: "椅子", Table: "桌子", Desk: "书桌", Bed: "床", Pillow: "枕头", Sofa: "沙发", Couch: "沙发",
+  Bench: "长椅", Stool: "凳子", Throne: "王座", Shelf: "架子", Bookshelf: "书架", Wardrobe: "衣柜",
+  Cabinet: "柜子", Locker: "储物柜", Mirror: "镜子", Window: "窗", Curtain: "窗帘", Rug: "地毯",
+  Statue: "雕像", Barrel: "木桶", Box: "箱子", Crate: "板条箱", Chest: "宝箱", Fence: "栅栏",
+  Barrier: "围栏", Rope: "绳", Cage: "笼子", Cell: "牢房", Chain: "锁链", Chains: "锁链", Bars: "栏杆",
+  Pillar: "柱子", Column: "圆柱", Stairs: "楼梯", Ladder: "梯子", Bridge: "桥", Fountain: "喷泉",
+  Toilet: "马桶", Shower: "淋浴", Bath: "浴缸", Sink: "水槽", Television: "电视", Fireplace: "壁炉",
+  Piano: "钢琴", Pool: "水池", Balloon: "气球", Balloons: "气球", Cake: "蛋糕", Gift: "礼物", Present: "礼物",
+  Sign: "告示牌", Banner: "旗帜", Flag: "旗帜", Key: "钥匙", Door: "门", Gate: "大门", Entry: "入口", Exit: "出口",
+  Open: "打开", Closed: "关闭", Locked: "上锁", Unlocked: "未上锁", Up: "向上", Down: "向下",
+  Left: "左", Right: "右", Front: "正面", Back: "背面", Side: "侧面", Top: "顶部", Bottom: "底部",
+  Preview: "预览", Anim: "动画", Idle: "待机", Happy: "开心", Stand: "站立", Sit: "坐", Sleep: "睡觉",
+  // animals
+  Cat: "猫", Dog: "狗", Rabbit: "兔子", Chicken: "鸡", Horse: "马", Pig: "猪", Cow: "牛", Sheep: "羊",
+  Fox: "狐狸", Wolf: "狼", Bear: "熊", Bird: "鸟", Fish: "鱼", Duck: "鸭", Pony: "小马", Unicorn: "独角兽",
+  Caramel: "焦糖色",
+  // misc
+  Number: "数字", Letter: "字母", Icon: "图标", Arrow: "箭头", Heart: "爱心", Star: "星星", Skull: "骷髅",
+  Lock: "锁", Conveyor: "传送带", Belt: "带", Fast: "快速", Slow: "慢速", Big: "大", Small: "小", Large: "大",
+  Half: "半", Full: "完整", Dark: "深色", Light: "浅色", Blank: "空白",
+};
+// Display names for category groups created automatically for an unknown `Type` (see editor-ui.js).
+window.MAP_ZH_TYPES = {
+  Floor: "地板", FloorExterior: "室外地面", Wall: "墙壁", Water: "水域", WallPath: "门", WallDecoration: "墙面装饰",
+  Banners: "旗帜", FloorObstacle: "障碍物", FloorDecoration: "地面装饰", FloorDecorationThemed: "主题装饰",
+  FloorDecorationParty: "派对装饰", FloorDecorationCamping: "露营装饰", FloorDecorationExpanding: "组合家具",
+  FloorDecorationAnimal: "动物", FloorFoamTiles: "泡沫地垫", FloorItem: "道具", FloorNumber: "数字标记",
+  FloorLetter: "字母标记", FloorIcon: "图标标记", Functional: "功能物件", LivingRoom: "客厅", Bedroom: "卧室",
+  Bathroom: "浴室", School: "学校", ABDL: "ABDL", Kitchen: "厨房", Office: "办公室", Garden: "花园",
+  Dungeon: "地牢", Medieval: "中世纪", Halloween: "万圣节", Christmas: "圣诞节", Holiday: "节日",
+};
+</script>
   <script>// Chinese display labels for all BC map components.
 // Key = "Type:Style" (matches catalog byStyle keys), Value = Chinese name.
 window.MAP_ZH_LABELS = {
@@ -1996,6 +2063,11 @@ window.MAP_ZH_LABELS = {
   "Bathroom:EnemaHead": "灌肠器",
 };
 </script>
+  <script>window.MAP_ZH_LABELS_TW = {"Floor:OakWood":"橡木地板","Floor:Stone":"石磚地","Floor:Pavement":"人行道","Floor:Ceramic":"瓷磚","Floor:CeramicDark":"深色瓷磚","Floor:CarpetPink":"粉色地毯","Floor:CarpetBlue":"藍色地毯","Floor:CarpetRed":"紅色地毯","Floor:Padded":"軟墊地板","Floor:LatexFloor":"乳膠地板","Floor:Tile":"方格地磚","Floor:HexBlue":"六角藍磚","Floor:HexPurple":"六角紫磚","Floor:Machine":"機械地板","Floor:HalfWall":"半牆（擋視線）","FloorExterior:Dirt":"泥土","FloorExterior:Grass":"草地","FloorExterior:LongGrass":"長草","FloorExterior:Sand":"沙地","FloorExterior:Gravel":"碎石","FloorExterior:Asphalt":"瀝青路","FloorExterior:Snow":"雪地","FloorExterior:StoneSquareGray":"灰石方磚","FloorExterior:ScatteredLeaves":"落葉","FloorExterior:ScatteredLeavesDirt":"落葉泥地","FloorExterior:ScatteredLeavesThick":"厚落葉","Wall:MixedWood":"混木板牆","Wall:CedarWood":"雪松牆","Wall:Log":"圓木牆","Wall:Japanese":"日式牆","Wall:Stone":"石牆","Wall:Brick":"磚牆","Wall:Dungeon":"地牢牆","Wall:Square":"方格牆（隔音）","Wall:Steel":"鋼牆（隔音）","Wall:Padded":"軟墊牆（隔音）","Wall:Tile":"瓷磚牆","Wall:Lattice":"格柵牆","Wall:HexBlue":"六角藍牆","Wall:HexPurple":"六角紫牆","Wall:PipeBlue":"藍管牆","Wall:PipePurple":"紫管牆","Wall:SteelBlack":"黑鋼牆","Wall:SteelGary":"灰鋼牆","Water:Lava":"岩漿","Water:Ocean":"海洋","Water:OceanCalm":"平靜海洋","Water:OceanCyan":"青色海","Water:Pool":"泳池","Water:Sea":"淺海","Water:Shallow":"淺水","Water:Swamp":"沼澤","Water:Waves":"波浪","WallPath:WoodOpen":"木門（開）","WallPath:WoodClosed":"木門（關）","WallPath:WoodLocked":"木門（鎖）","WallPath:WoodLockedBronze":"銅鎖木門","WallPath:WoodLockedSilver":"銀鎖木門","WallPath:WoodLockedGold":"金鎖木門","WallPath:Metal":"金屬門","WallPath:MetalUp":"單向金屬門（上）","WallPath:MetalDown":"單向金屬門（下）","WallPath:MetalLockedBronze":"銅鎖金屬門","WallPath:MetalLockedSilver":"銀鎖金屬門","WallPath:MetalLockedGold":"金鎖金屬門","WallPath:BrownDoor":"棕門","WallPath:BrownDoorOpen":"棕門（開）","WallPath:RoyalDoor":"皇家門","WallPath:RoyalDoorOpen":"皇家門（開）","WallPath:SteelDoor":"鋼門","WallPath:SteelDoorOpen":"鋼門（開）","WallPath:GrayDoor":"灰門","WallPath:GrayDoorOpen":"灰門（開）","FloorDecoration:KeyBronze":"銅鑰匙","FloorDecoration:KeySilver":"銀鑰匙","FloorDecoration:KeyGold":"金鑰匙","FloorDecoration:EntryFlag":"出生點旗幟","FloorDecoration:ExitFlag":"出口旗幟","FloorDecoration:Blank":"空白","FloorDecoration:Bed":"床","FloorDecoration:BedTeal":"青色床","FloorDecoration:ChairWood":"木椅","FloorDecoration:PillowPink":"粉色枕頭","FloorDecoration:Stairs":"樓梯","FloorDecoration:TableBrown":"棕色桌子","FloorDecoration:ThroneRed":"紅色王座","FloorDecoration:VikingChair":"維京椅","FloorDecoration:AirConditioner":"空調","FloorDecorationAnimal:Blank":"空白動物位","FloorDecorationAnimal:CatCaramelHappy":"焦糖貓","FloorDecorationAnimal:ChickenBrownIdleLeft":"雞","FloorDecorationAnimal:DogBrownHappy":"狗","FloorDecorationAnimal:RabbitBrownStand":"兔子","FloorDecorationCamping:Blank":"空白露營位","FloorDecorationCamping:ChairRed":"紅椅子","FloorDecorationCamping:Hurdle1":"跨欄1","FloorDecorationCamping:Hurdle2":"跨欄2","FloorDecorationCamping:Hurdle3":"跨欄3","FloorDecorationCamping:LogFire":"篝火","FloorDecorationCamping:LogFireAnim0":"篝火動畫","FloorDecorationCamping:LogSingle":"原木","FloorDecorationCamping:SleepingBagBlue":"藍色睡袋","FloorDecorationCamping:TentBlue":"藍色帳篷","FloorDecorationExpanding:Blank":"空白擴充套件位","FloorDecorationExpanding:BallPitPreview":"球池預覽","FloorDecorationExpanding:BedBluePreview":"藍床預覽","FloorDecorationExpanding:CouchPinkPreview":"粉沙發預覽","FloorDecorationExpanding:RailroadPreview":"軌道預覽","FloorDecorationExpanding:VikingTablePreview":"維京桌預覽","FloorDecorationParty:Blank":"空白派對位","FloorDecorationParty:BalloonFiveColor":"五色氣球","FloorDecorationParty:BalloonTwoHeart":"愛心氣球","FloorDecorationParty:BeachTowelStripe":"條紋沙灘巾","FloorDecorationParty:BeachUmbrellaStripe":"條紋遮陽傘","FloorDecorationParty:FlowerVasePink":"粉色花瓶","FloorDecorationParty:Presents":"禮物盒","FloorDecorationParty:Speaker":"音箱","FloorDecorationParty:WeddingArch":"婚禮拱門","FloorDecorationParty:WeddingCake":"婚禮蛋糕","FloorDecorationThemed:Blank":"空白主題位","FloorDecorationThemed:BanzaiTree":"萬歲樹","FloorDecorationThemed:BondageClubBanner":"BC橫幅","FloorDecorationThemed:Cabinet":"櫃子","FloorDecorationThemed:ConsoleLeft":"左控制台","FloorDecorationThemed:ConsoleRight":"右控制台","FloorDecorationThemed:DeskBlue":"藍色書桌","FloorDecorationThemed:DeskPurple":"紫色書桌","FloorDecorationThemed:IroningBoard":"熨衣板","FloorDecorationThemed:JapaneseTable":"日式矮桌","FloorDecorationThemed:KatanaOnStand":"武士刀架","FloorDecorationThemed:LaundryMachine":"洗衣機","FloorDecorationThemed:LongDeskLeft":"長桌左","FloorDecorationThemed:LongDeskRight":"長桌右","FloorDecorationThemed:MagicMark":"魔法印記","FloorDecorationThemed:MedicalDesk":"醫療桌","FloorDecorationThemed:ShibariFrame":"縛繩架","FloorDecorationThemed:SinkDishes":"水槽","FloorDecorationThemed:StandingBellflowerBanner":"風鈴草旗","FloorDecorationThemed:StudentDesk":"學生課桌","FloorDecorationThemed:TeacherDesk":"教師講臺","FloorDecorationThemed:Television":"電視","FloorDecorationThemed:TelevisionBack":"電視背面","FloorDecorationThemed:Toilet":"馬桶","FloorDecorationThemed:VoidOrderBanner":"虛空教團旗","FloorDecorationThemed:Wardrobe":"衣櫃","FloorObstacle:Blank":"空白障礙位","FloorObstacle:Stalagmite":"石筍","FloorObstacle:Rocks":"岩石堆","FloorObstacle:GoldStones":"金石堆","FloorObstacle:StonePile":"石堆","FloorObstacle:Statue":"雕像","FloorObstacle:Knight":"騎士像","FloorObstacle:Samurai":"武士像","FloorObstacle:Totem":"圖騰柱","FloorObstacle:EasterIsland":"復活節島石像","FloorObstacle:OrderOfTheVoidTotem":"虛空教團圖騰","FloorObstacle:Barrel":"木桶","FloorObstacle:Chest":"寶箱","FloorObstacle:IronBars":"鐵欄杆","FloorObstacle:BarbFence":"刺網圍欄","FloorObstacle:PicketFence":"尖樁籬笆","FloorObstacle:VelourRopeBarrier":"天鵝絨繩欄","FloorObstacle:Bush":"灌木叢","FloorObstacle:OakTree":"橡樹","FloorObstacle:OakTree_Fall":"倒下的橡樹","FloorObstacle:LeaflessTree":"枯樹","FloorObstacle:PineTree":"松樹","FloorObstacle:PalmTree":"棕櫚樹","FloorObstacle:Sakura":"櫻花樹","FloorObstacle:Cactus":"仙人掌","FloorObstacle:ChristmasTree":"聖誕樹","FloorObstacle:Window":"窗戶","FloorObstacle:TrashCan":"垃圾桶","FloorObstacle:RoadCone":"路錐","FloorObstacle:LampPost":"路燈","FloorObstacle:Pillar":"石柱","FloorItem:Blank":"空白道具位","FloorItem:BondageBench":"束縛長凳","FloorItem:Coffin":"棺材","FloorItem:FuturisticCrate":"未來箱","FloorItem:Kennel":"犬籠","FloorItem:Locker":"儲物櫃","FloorItem:MedicalBed":"醫療床","FloorItem:Pole":"立柱","FloorItem:TheDisplayFrame":"展示框","FloorItem:Trolley":"手推車","FloorItem:WoodenBox":"木箱","FloorItem:X-Cross":"十字架","FloorLetter:Blank":"空白字母","FloorNumber:Blank":"空白數字","FloorIcon:Blank":"空白圖示","FloorIcon:IconArrowDown":"↓箭頭","FloorIcon:IconArrowLeft":"←箭頭","FloorIcon:IconArrowRight":"→箭頭","FloorIcon:IconArrowUp":"↑箭頭","FloorIcon:IconCircle":"圓形","FloorIcon:IconCross":"叉號","FloorIcon:IconDiamond":"菱形","FloorIcon:IconSquare":"方形","FloorIcon:IconTriangle":"三角形","Banners:BellflowerBanner":"風鈴草旗","Banners:Black":"黑色旗","Banners:Blue":"藍色旗","Banners:BondageClub":"BC旗","Banners:Green":"綠色旗","Banners:Inquisition":"宗教裁判所旗","Banners:MagesSacrosanctorum":"聖法師旗","Banners:MaidSorority":"女僕會旗","Banners:PaladinBanner":"聖騎士旗","Banners:Priesthood":"祭司旗","Banners:Red":"紅色旗","Banners:ServiOrdinisBanner":"秩序之僕旗","Banners:VoidOrder":"虛空教團旗","Banners:Yellow":"黃色旗","WallDecoration:Blank":"空白牆面裝飾","WallDecoration:AirConditioner":"牆面空調","WallDecoration:Bookshelf":"書架","WallDecoration:Candelabra0":"燭臺","WallDecoration:CrossedSabers":"交叉佩刀","WallDecoration:EnemaHead":"灌腸器","WallDecoration:EyeTest":"視力表","WallDecoration:Fireplace":"壁爐","WallDecoration:FirstAidKit":"急救箱","WallDecoration:Mirror":"鏡子","WallDecoration:MonitorBigLeft":"大屏左","WallDecoration:MonitorBigRight":"大屏右","WallDecoration:MonitorSmall":"小螢幕","WallDecoration:Moss":"苔蘚","WallDecoration:Painting":"畫作","WallDecoration:SchoolBoard":"學校公告板","WallDecoration:Scroll":"卷軸","WallDecoration:ShowerHead":"淋浴噴頭","WallDecoration:SilverShield":"銀盾牌","WallDecoration:StainedGlass":"彩色玻璃窗","WallDecoration:Stocking":"聖誕襪","WallDecoration:Vines":"藤蔓","WallDecoration:Vines2":"藤蔓2","WallDecoration:Wanted":"通緝令","WallDecoration:Whip":"鞭子","WallDecoration:Window":"窗戶","WallDecoration:WindowNight":"夜間窗戶","Floor:WoodWhite":"白木木板地板","Floor:WoodPine":"松木木板地板","Floor:WoodMaple":"楓木木板地板","Floor:WoodAcacia":"相思木木板地板","Floor:WoodMahogany":"桃花心木木板地板","Floor:WoodMangrove":"紅樹木木板地板","Floor:WoodCherry":"櫻木木板地板","Floor:Tatami":"榻榻米","Floor:PaddedBlack":"黑色軟墊地板","Floor:PaddedGray":"灰色軟墊地板","Floor:PaddedBlue":"藍色軟墊地板","Floor:PaddedGreen":"綠色軟墊地板","Floor:PaddedRed":"紅色軟墊地板","Floor:PaddedOrange":"橙色軟墊地板","Floor:PaddedYellow":"黃色軟墊地板","Floor:PaddedLightBlue":"淺藍色軟墊地板","Floor:PaddedPink":"粉色軟墊地板","Floor:PaddedPurple":"紫色軟墊地板","Floor:PaddedBrown":"棕色軟墊地板","Floor:LatexFloorGray":"灰色乳膠地板","Floor:LatexFloorBlue":"藍色乳膠地板","Floor:LatexFloorGreen":"綠色乳膠地板","Floor:LatexFloorRed":"紅色乳膠地板","Floor:LatexFloorOrange":"橙色乳膠地板","Floor:LatexFloorYellow":"黃色乳膠地板","Floor:LatexFloorLightBlue":"淺藍色乳膠地板","Floor:LatexFloorPink":"粉色乳膠地板","Floor:LatexFloorPurple":"紫色乳膠地板","Floor:LatexFloorBrown":"棕色乳膠地板","Floor:LatexFloorWhite":"白色乳膠地板","Floor:TileGray":"灰色地磚","Floor:TileBlue":"藍色地磚","Floor:TileGreen":"綠色地磚","Floor:TileRed":"紅色地磚","Floor:TileOrange":"橙色地磚","Floor:TileYellow":"黃色地磚","Floor:TileLightBlue":"淺藍色地磚","Floor:TilePink":"粉色地磚","Floor:TilePurple":"紫色地磚","Floor:TileBrown":"棕色地磚","Floor:TileBlack":"黑色地磚","Floor:CarpetGreen":"綠色地毯","Floor:CarpetRed2":"紅色地毯2","Floor:CarpetOrange":"橙色地毯","Floor:CarpetYellow":"黃色地毯","Floor:CarpetLightBlue":"淺藍色地毯","Floor:CarpetPurple":"紫色地毯","Floor:CarpetBrown":"棕色地毯","Floor:CarpetBlack":"黑色地毯","Floor:CarpetGray":"灰色地毯","Floor:CheckerCarpetWhite":"白色格紋地毯","Floor:CheckerCarpetGray":"灰色格紋地毯","Floor:CheckerCarpetBlue":"藍色格紋地毯","Floor:CheckerCarpetGreen":"綠色格紋地毯","Floor:CheckerCarpetRed":"紅色格紋地毯","Floor:CheckerCarpetOrange":"橙色格紋地毯","Floor:CheckerCarpetYellow":"黃色格紋地毯","Floor:CheckerCarpetLightBlue":"淺藍色格紋地毯","Floor:CheckerCarpetPink":"粉色格紋地毯","Floor:CheckerCarpetPurple":"紫色格紋地毯","Floor:CheckerCarpetBrown":"棕色格紋地毯","Floor:CheckerCarpetBlack":"黑色格紋地毯","Floor:SlimeGreen":"綠色史萊姆地面","Floor:SlimePink":"粉色史萊姆地面","Floor:SlimeRed":"紅色史萊姆地面","Floor:SlimeBlue":"藍色史萊姆地面","Floor:HoneyOrange":"橙色蜂蜜地面","Floor:HoneyRed":"紅色蜂蜜地面","Floor:HoneyPurple":"紫色蜂蜜地面","Floor:HoneyBlue":"藍色蜂蜜地面","Wall:SpiderWeb":"蜘蛛網牆","Wall:WoodPine":"松木木板牆","Wall:WoodMaple":"楓木木板牆","Wall:WoodAcacia":"相思木木板牆","Wall:WoodMahogany":"桃花心木木板牆","Wall:WoodMangrove":"紅樹木木板牆","Wall:WoodCherry":"櫻木木板牆","Wall:WoodWhite":"白木木板牆","Wall:WoodOak":"橡木木板牆","Wall:LogPine":"松木原木牆","Wall:LogMaple":"楓木原木牆","Wall:LogAcacia":"相思木原木牆","Wall:LogMahogany":"桃花心木原木牆","Wall:LogMangrove":"紅樹木原木牆","Wall:LogCherry":"櫻木原木牆","Wall:LogWhite":"白木原木牆","Wall:LogOak":"橡木原木牆","Wall:PaddedBlack":"黑色軟墊牆","Wall:PaddedGray":"灰色軟墊牆","Wall:PaddedBlue":"藍色軟墊牆","Wall:PaddedGreen":"綠色軟墊牆","Wall:PaddedRed":"紅色軟墊牆","Wall:PaddedYellow":"黃色軟墊牆","Wall:PaddedBrown":"棕色軟墊牆","Wall:PaddedOrange":"橙色軟墊牆","Wall:PaddedPurple":"紫色軟墊牆","Wall:PaddedPink":"粉色軟墊牆","Wall:PaddedLightBlue":"淺藍色軟墊牆","Wall:TileGray":"灰色地磚牆","Wall:TileBlue":"藍色地磚牆","Wall:TileGreen":"綠色地磚牆","Wall:TileRed":"紅色地磚牆","Wall:TileYellow":"黃色地磚牆","Wall:TileBrown":"棕色地磚牆","Wall:TileOrange":"橙色地磚牆","Wall:TilePurple":"紫色地磚牆","Wall:TilePink":"粉色地磚牆","Wall:TileLightBlue":"淺藍色地磚牆","Wall:TileBlack":"黑色地磚牆","Wall:SlimeGreen":"綠色史萊姆牆","Wall:SlimePink":"粉色史萊姆牆","Wall:SlimeRed":"紅色史萊姆牆","Wall:SlimeBlue":"藍色史萊姆牆","Wall:HoneyOrange":"橙色蜂蜜牆","Wall:HoneyRed":"紅色蜂蜜牆","Wall:HoneyPurple":"紫色蜂蜜牆","Wall:HoneyBlue":"藍色蜂蜜牆","Bedroom:TeddyBear":"泰迪熊","Bedroom:PinkTeddyBear":"粉色泰迪熊","Bedroom:Nightstand":"床頭櫃","Bedroom:PinkNightstand":"粉色床頭櫃","FloorDecorationThemed:anvil":"鐵砧","FloorDecorationThemed:grindstone":"磨刀石","FloorDecorationThemed:furnace":"熔爐","FloorDecorationThemed:microwave":"微波爐","FloorDecorationThemed:stove":"爐灶","FloorDecorationThemed:fridge":"冰箱","FloorDecorationParty:Pumpkin":"南瓜","FloorDecorationParty:JackOLantern":"南瓜燈","ABDL:HighChair":"高腳餐椅","ABDL:Crib":"嬰兒床","ABDL:PinkCrib":"粉色嬰兒床","FloorNumber:Number0":"數字0","FloorNumber:Number1":"數字1","FloorNumber:Number2":"數字2","FloorNumber:Number3":"數字3","FloorNumber:Number4":"數字4","FloorNumber:Number5":"數字5","FloorNumber:Number6":"數字6","FloorNumber:Number7":"數字7","FloorNumber:Number8":"數字8","FloorNumber:Number9":"數字9","FloorLetter:LetterA":"字母A","FloorLetter:LetterB":"字母B","FloorLetter:LetterC":"字母C","FloorLetter:LetterD":"字母D","FloorLetter:LetterE":"字母E","FloorLetter:LetterF":"字母F","FloorLetter:LetterG":"字母G","FloorLetter:LetterH":"字母H","FloorLetter:LetterI":"字母I","FloorLetter:LetterJ":"字母J","FloorLetter:LetterK":"字母K","FloorLetter:LetterL":"字母L","FloorLetter:LetterM":"字母M","FloorLetter:LetterN":"字母N","FloorLetter:LetterO":"字母O","FloorLetter:LetterP":"字母P","FloorLetter:LetterQ":"字母Q","FloorLetter:LetterR":"字母R","FloorLetter:LetterS":"字母S","FloorLetter:LetterT":"字母T","FloorLetter:LetterU":"字母U","FloorLetter:LetterV":"字母V","FloorLetter:LetterW":"字母W","FloorLetter:LetterX":"字母X","FloorLetter:LetterY":"字母Y","FloorLetter:LetterZ":"字母Z","ABDL:PinkPotty":"粉色便盆","ABDL:BluePotty":"藍色便盆","ABDL:ChangingTable":"尿布臺","Bathroom:BlueBathroomMat":"藍色浴室墊","Bathroom:GreenBathroomMat":"綠色浴室墊","Bathroom:PinkBathroomMat":"粉色浴室墊","Bathroom:Sink":"洗手檯","Bathroom:ToiletPaper":"衛生紙","Bathroom:Bathtub":"浴缸","School:Clock":"時鐘","Functional:ConveyorBelt1":"輸送帶","Functional:ConveyorBeltFast1":"快速輸送帶","Functional:SignWood":"木告示牌","Functional:SignWoodWall":"木告示牌（牆掛）","Functional:SignMetal":"金屬告示牌","Functional:SignMetalWall":"金屬告示牌（牆掛）","FloorFoamTiles:PlayTileWhite":"白色遊戲地墊","FloorFoamTiles:PlayTileGray":"灰色遊戲地墊","FloorFoamTiles:PlayTileBlack":"黑色遊戲地墊","FloorFoamTiles:PlayTileBlue":"藍色遊戲地墊","FloorFoamTiles:PlayTileGreen":"綠色遊戲地墊","FloorFoamTiles:PlayTileRed":"紅色遊戲地墊","FloorFoamTiles:PlayTileYellow":"黃色遊戲地墊","FloorFoamTiles:PlayTileOrange":"橙色遊戲地墊","FloorFoamTiles:PlayTilePurple":"紫色遊戲地墊","FloorFoamTiles:PlayTilePink":"粉色遊戲地墊","FloorFoamTiles:PlayTileBrown":"棕色遊戲地墊","FloorFoamTiles:PlayTileLightBlue":"淺藍色遊戲地墊","LivingRoom:Blank":"空白","Functional:EntryFlag":"出生點旗幟","Functional:ExitFlag":"出口旗幟","Bedroom:BedTeal":"青色床","LivingRoom:PillowPink":"粉色枕頭","LivingRoom:TableBrown":"棕色桌子","LivingRoom:ChairWood":"木椅","LivingRoom:ThroneRed":"紅色王座","Functional:KeyBronze":"銅鑰匙","Functional:KeySilver":"銀鑰匙","Functional:KeyGold":"金鑰匙","LivingRoom:VikingChair":"維京椅","Bedroom:Bed":"床","LivingRoom:Stairs":"樓梯","LivingRoom:AirConditioner":"空調","School:TeacherDesk":"教師講臺","School:StudentDesk":"學生課桌","Bathroom:LaundryMachine":"洗衣機","Bathroom:IroningBoard":"熨衣板","LivingRoom:JapaneseTable":"日式矮桌","Bathroom:Toilet":"馬桶","LivingRoom:Television":"電視","LivingRoom:TelevisionBack":"電視背面","Bedroom:Wardrobe":"衣櫃","School:Locker":"儲物櫃","Bathroom:Mirror":"鏡子","LivingRoom:Fireplace":"壁爐","School:SchoolBoard":"學校公告板","LivingRoom:Bookshelf":"書架","Bathroom:ShowerHead":"淋浴噴頭","Bathroom:EnemaHead":"灌腸器"};
+window.MAP_ZH_COLORS_TW = {"White":"白色","Gray":"灰色","Grey":"灰色","Black":"黑色","Blue":"藍色","Green":"綠色","Red":"紅色","Orange":"橙色","Yellow":"黃色","Pink":"粉色","Purple":"紫色","Brown":"棕色","Teal":"青色","Cyan":"青色","Beige":"米色","Cream":"奶油色","Navy":"藏青色","Lime":"青檸色","Magenta":"洋紅色","Maroon":"酒紅色","Violet":"紫羅蘭色","Turquoise":"綠松石色","Gold":"金色","Silver":"銀色","Bronze":"銅色","Rainbow":"彩虹色","Tan":"黃褐色","Olive":"橄欖色","Lavender":"薰衣草色","Mint":"薄荷色","Peach":"桃色","Coral":"珊瑚色","Rose":"玫瑰色","Indigo":"靛藍色","Ivory":"象牙色","Khaki":"卡其色","Crimson":"深紅色"};
+window.MAP_ZH_MODIFIERS_TW = {"Light":"淺","Dark":"深","Bright":"亮","Pale":"淡","Deep":"深"};
+window.MAP_ZH_WORDS_TW = {"Floor":"地板","Wall":"牆","Tile":"地磚","Tiles":"地磚","Carpet":"地毯","Checker":"格紋","Padded":"軟墊","Latex":"乳膠","Slime":"史萊姆","Honey":"蜂蜜","Foam":"泡沫","Play":"遊戲","Wood":"木","Wooden":"木製","Log":"圓木","Stone":"石","Brick":"磚","Metal":"金屬","Steel":"鋼","Iron":"鐵","Glass":"玻璃","Marble":"大理石","Concrete":"水泥","Plank":"木板","Planks":"木板","Oak":"橡木","Pine":"松木","Maple":"楓木","Acacia":"金合歡木","Mahogany":"紅木","Mangrove":"紅樹木","Cherry":"櫻桃木","Bamboo":"竹","Tatami":"榻榻米","Hex":"六角","Square":"方格","Round":"圓形","Plain":"素色","Striped":"條紋","Dotted":"圓點","Fancy":"華麗","Royal":"皇家","Dungeon":"地牢","Japanese":"日式","Medieval":"中世紀","Modern":"現代","Old":"舊","New":"新","Grass":"草","Dirt":"泥土","Sand":"沙","Gravel":"碎石","Snow":"雪","Ice":"冰","Water":"水","Lava":"岩漿","Leaves":"落葉","Leaf":"葉","Tree":"樹","Palm":"棕櫚","Bush":"灌木","Flower":"花","Flowers":"花","Plant":"植物","Rock":"岩石","Rocks":"岩石","Mushroom":"蘑菇","Pumpkin":"南瓜","Cactus":"仙人掌","Fire":"火","Torch":"火把","Campfire":"營火","Tent":"帳篷","Lantern":"燈籠","Lamp":"燈","Candle":"蠟燭","Candelabra":"燭臺","Spider":"蜘蛛","Web":"網","Cobweb":"蛛網","Chair":"椅子","Table":"桌子","Desk":"書桌","Bed":"床","Pillow":"枕頭","Sofa":"沙發","Couch":"沙發","Bench":"長椅","Stool":"凳子","Throne":"王座","Shelf":"架子","Bookshelf":"書架","Wardrobe":"衣櫃","Cabinet":"櫃子","Locker":"儲物櫃","Mirror":"鏡子","Window":"窗","Curtain":"窗簾","Rug":"地毯","Statue":"雕像","Barrel":"木桶","Box":"箱子","Crate":"板條箱","Chest":"寶箱","Fence":"柵欄","Barrier":"圍欄","Rope":"繩","Cage":"籠子","Cell":"牢房","Chain":"鎖鏈","Chains":"鎖鏈","Bars":"欄杆","Pillar":"柱子","Column":"圓柱","Stairs":"樓梯","Ladder":"梯子","Bridge":"橋","Fountain":"噴泉","Toilet":"馬桶","Shower":"淋浴","Bath":"浴缸","Sink":"水槽","Television":"電視","Fireplace":"壁爐","Piano":"鋼琴","Pool":"水池","Balloon":"氣球","Balloons":"氣球","Cake":"蛋糕","Gift":"禮物","Present":"禮物","Sign":"告示牌","Banner":"旗幟","Flag":"旗幟","Key":"鑰匙","Door":"門","Gate":"大門","Entry":"入口","Exit":"出口","Open":"開啟","Closed":"關閉","Locked":"上鎖","Unlocked":"未上鎖","Up":"向上","Down":"向下","Left":"左","Right":"右","Front":"正面","Back":"背面","Side":"側面","Top":"頂部","Bottom":"底部","Preview":"預覽","Anim":"動畫","Idle":"待機","Happy":"開心","Stand":"站立","Sit":"坐","Sleep":"睡覺","Cat":"貓","Dog":"狗","Rabbit":"兔子","Chicken":"雞","Horse":"馬","Pig":"豬","Cow":"牛","Sheep":"羊","Fox":"狐狸","Wolf":"狼","Bear":"熊","Bird":"鳥","Fish":"魚","Duck":"鴨","Pony":"小馬","Unicorn":"獨角獸","Caramel":"焦糖色","Number":"數字","Letter":"字母","Icon":"圖示","Arrow":"箭頭","Heart":"愛心","Star":"星星","Skull":"骷髏","Lock":"鎖","Conveyor":"傳送帶","Belt":"帶","Fast":"快速","Slow":"慢速","Big":"大","Small":"小","Large":"大","Half":"半","Full":"完整","Dark":"深色","Light":"淺色","Blank":"空白"};
+window.MAP_ZH_TYPES_TW = {"Floor":"地板","FloorExterior":"室外地面","Wall":"牆壁","Water":"水域","WallPath":"門","WallDecoration":"牆面裝飾","Banners":"旗幟","FloorObstacle":"障礙物","FloorDecoration":"地面裝飾","FloorDecorationThemed":"主題裝飾","FloorDecorationParty":"派對裝飾","FloorDecorationCamping":"露營裝飾","FloorDecorationExpanding":"組合傢俱","FloorDecorationAnimal":"動物","FloorFoamTiles":"泡沫地墊","FloorItem":"道具","FloorNumber":"數字標記","FloorLetter":"字母標記","FloorIcon":"圖示標記","Functional":"功能物件","LivingRoom":"客廳","Bedroom":"臥室","Bathroom":"浴室","School":"學校","ABDL":"ABDL","Kitchen":"廚房","Office":"辦公室","Garden":"花園","Dungeon":"地牢","Medieval":"中世紀","Halloween":"萬聖節","Christmas":"聖誕節","Holiday":"節日"};</script>
   <script>// BC room-map editor — i18n layer.
 // Locales follow the BC ecosystem convention: cn / tw / en / de / fr / ru / ua (+ auto).
 // UI strings are fully translated; component (asset) names use Chinese labels for
@@ -2053,6 +2125,7 @@ window.MAP_ZH_LABELS = {
       "cat2.deco": "装饰",
       "cat2.item": "道具",
       "cat2.marker": "标记",
+      "cat2.other": "其他（新增）",
       "cat.furniture": "家具",
       "cat.bedding": "寝具",
       "cat.party": "派对道具",
@@ -2145,6 +2218,7 @@ window.MAP_ZH_LABELS = {
       "cat2.deco": "裝飾",
       "cat2.item": "道具",
       "cat2.marker": "標記",
+      "cat2.other": "其他（新增）",
       "cat.furniture": "家具",
       "cat.bedding": "寢具",
       "cat.party": "派對道具",
@@ -2237,6 +2311,7 @@ window.MAP_ZH_LABELS = {
       "cat2.deco": "Decoration",
       "cat2.item": "Props",
       "cat2.marker": "Marker",
+      "cat2.other": "Other (new)",
       "cat.furniture": "Furniture",
       "cat.bedding": "Bedding",
       "cat.party": "Party",
@@ -2329,6 +2404,7 @@ window.MAP_ZH_LABELS = {
       "cat2.deco": "Dekoration",
       "cat2.item": "Requisiten",
       "cat2.marker": "Markierung",
+      "cat2.other": "Sonstige (neu)",
       "cat.furniture": "Möbel",
       "cat.bedding": "Bettwäsche",
       "cat.party": "Party",
@@ -2421,6 +2497,7 @@ window.MAP_ZH_LABELS = {
       "cat2.deco": "Décoration",
       "cat2.item": "Accessoires",
       "cat2.marker": "Marqueur",
+      "cat2.other": "Autres (nouveau)",
       "cat.furniture": "Meubles",
       "cat.bedding": "Literie",
       "cat.party": "Fête",
@@ -2513,6 +2590,7 @@ window.MAP_ZH_LABELS = {
       "cat2.deco": "Декор",
       "cat2.item": "Реквизит",
       "cat2.marker": "Метка",
+      "cat2.other": "Прочее (новое)",
       "cat.furniture": "Мебель",
       "cat.bedding": "Постельное бельё",
       "cat.party": "Вечеринка",
@@ -2605,6 +2683,7 @@ window.MAP_ZH_LABELS = {
       "cat2.deco": "Декор",
       "cat2.item": "Реквізит",
       "cat2.marker": "Мітка",
+      "cat2.other": "Інше (нове)",
       "cat.furniture": "Меблі",
       "cat.bedding": "Постільна білизна",
       "cat.party": "Вечірка",
@@ -2702,20 +2781,58 @@ window.MAP_ZH_LABELS = {
   function available() { return Object.keys(DICT); }
   function localeName(loc) { return LOCALE_NAMES[loc] || loc; }
 
-  // Localized label for a catalog component.
-  // cn/tw use the Chinese zh-label; every other locale falls back to the BC
-  // English `style` name (asset images are language-neutral).
-  const ZH = (typeof window !== "undefined" && window.MAP_ZH_LABELS) || {};
+  // Localized label for a catalog component. Resolution order for cn / tw:
+  //   exact zh-label  ->  composed from the token dictionary (auto-labels.js, every token must be known)
+  //   ->  BC's English `name`  ->  style id split into words.
+  // Other locales show the BC style id as before (asset images are language-neutral).
+  // So a part that BC adds tomorrow is selectable immediately, with no translation work.
+  const W = (typeof window !== "undefined") ? window : {};
+  const ZH = W.MAP_ZH_LABELS || {};
   // Conveyor belts share one style per speed; the walking direction distinguishes the 4 ids.
   const DIR_ARROW = { West: "←", East: "→", South: "↓", North: "↑" };
+  function words(id) { return String(id || "").match(/[A-Z]+(?![a-z])|[A-Z]?[a-z]+|\d+/g) || []; }
+  function prettify(id) { return words(id).join(" ") || String(id || "?"); }
+  // Join "Light"+"Blue" etc. Returns a Chinese string or null when ANY token is unknown.
+  function composeZh(style, tw) {
+    const COL = (tw && W.MAP_ZH_COLORS_TW) || W.MAP_ZH_COLORS || {};
+    const MOD = (tw && W.MAP_ZH_MODIFIERS_TW) || W.MAP_ZH_MODIFIERS || {};
+    const WRD = (tw && W.MAP_ZH_WORDS_TW) || W.MAP_ZH_WORDS || {};
+    const tk = words(style);
+    if (!tk.length) return null;
+    const colors = [], rest = [];
+    for (let i = 0; i < tk.length; i++) {
+      const t = tk[i], nx = tk[i + 1];
+      if (/^\d+$/.test(t)) { rest.push(t); continue; }
+      if (MOD[t] && nx && COL[nx]) { colors.push(MOD[t] + COL[nx]); i++; continue; } // LightBlue -> 浅蓝色
+      if (COL[t]) { colors.push(COL[t]); continue; }
+      if (WRD[t]) { rest.push(WRD[t]); continue; }
+      return null; // unknown word -> let the caller fall back to English
+    }
+    return colors.concat(rest).join("");
+  }
   function labelForComp(comp) {
     const key = (comp.type || "") + ":" + (comp.style || "");
     const arrow = comp.dir ? " " + (DIR_ARROW[comp.dir] || comp.dir) : "";
-    if (current === "cn" || current === "tw") return (ZH[key] || comp.style || "?") + arrow;
+    if (current === "cn" || current === "tw") {
+      const tw = current === "tw";
+      const table = (tw && W.MAP_ZH_LABELS_TW) || ZH;
+      if (table[key]) return table[key] + arrow;
+      const auto = composeZh(comp.style, tw);
+      if (auto) return auto + arrow;
+      return (comp.name || prettify(comp.style)) + arrow;
+    }
     return (comp.style || "?") + arrow;
   }
+  // Display name of a `Type` (used for automatically created "unknown type" category groups).
+  function typeLabel(type) {
+    if (current === "cn" || current === "tw") {
+      const t = (current === "tw" && W.MAP_ZH_TYPES_TW) || W.MAP_ZH_TYPES || {};
+      if (t[type]) return t[type];
+    }
+    return prettify(type);
+  }
 
-  window.MAP_I18N = { t, setLocale, getLocale, getSavedLocale, available, localeName, labelForComp, LOCALE_NAMES };
+    window.MAP_I18N = { t, setLocale, getLocale, getSavedLocale, available, localeName, labelForComp, typeLabel, LOCALE_NAMES };
 })();
 </script>
   <script>window.MAP_IMAGES = {"Floor:OakWood": "assets/MapTile/Floor/OakWood.png", "Floor:Stone": "assets/MapTile/Floor/Stone.png", "Floor:Pavement": "assets/MapTile/Floor/Pavement.png", "Floor:Ceramic": "assets/MapTile/Floor/Ceramic.png", "Floor:CeramicDark": "assets/MapTile/Floor/CeramicDark.png", "Floor:CarpetPink": "assets/MapTile/Floor/CarpetPink.png", "Floor:CarpetBlue": "assets/MapTile/Floor/CarpetBlue.png", "Floor:CarpetRed": "assets/MapTile/Floor/CarpetRed.png", "Floor:Padded": "assets/MapTile/Floor/Padded.png", "Floor:LatexFloor": "assets/MapTile/Floor/LatexFloor.png", "Floor:Tile": "assets/MapTile/Floor/Tile.png", "Floor:HexBlue": "assets/MapTile/Floor/HexBlue.png", "Floor:HexPurple": "assets/MapTile/Floor/HexPurple.png", "Floor:Machine": "assets/MapTile/Floor/Machine.png", "Floor:HalfWall": "assets/MapTile/Floor/HalfWall.png", "FloorExterior:Dirt": "assets/MapTile/FloorExterior/Dirt.png", "FloorExterior:Grass": "assets/MapTile/FloorExterior/Grass.png", "FloorExterior:LongGrass": "assets/MapTile/FloorExterior/LongGrass.png", "FloorExterior:Sand": "assets/MapTile/FloorExterior/Sand.png", "FloorExterior:Gravel": "assets/MapTile/FloorExterior/Gravel.png", "FloorExterior:Asphalt": "assets/MapTile/FloorExterior/Asphalt.png", "FloorExterior:Snow": "assets/MapTile/FloorExterior/Snow.png", "FloorExterior:StoneSquareGray": "assets/MapTile/FloorExterior/StoneSquareGray.png", "FloorExterior:ScatteredLeaves": "assets/MapTile/FloorExterior/ScatteredLeaves.png", "FloorExterior:ScatteredLeavesDirt": "assets/MapTile/FloorExterior/ScatteredLeavesDirt.png", "FloorExterior:ScatteredLeavesThick": "assets/MapTile/FloorExterior/ScatteredLeavesThick.png", "Wall:MixedWood": "assets/MapTile/Wall/MixedWood.png", "Wall:CedarWood": "assets/MapTile/Wall/CedarWood.png", "Wall:Log": "assets/MapTile/Wall/Log.png", "Wall:Japanese": "assets/MapTile/Wall/Japanese.png", "Wall:Stone": "assets/MapTile/Wall/Stone.png", "Wall:Brick": "assets/MapTile/Wall/Brick.png", "Wall:Dungeon": "assets/MapTile/Wall/Dungeon.png", "Wall:Square": "assets/MapTile/Wall/Square.png", "Wall:Steel": "assets/MapTile/Wall/Steel.png", "Wall:Padded": "assets/MapTile/Wall/Padded.png", "Wall:Tile": "assets/MapTile/Wall/Tile.png", "Wall:Lattice": "assets/MapTile/Wall/Lattice.png", "Wall:HexBlue": "assets/MapTile/Wall/HexBlue.png", "Wall:HexPurple": "assets/MapTile/Wall/HexPurple.png", "Wall:PipeBlue": "assets/MapTile/Wall/PipeBlue.png", "Wall:PipePurple": "assets/MapTile/Wall/PipePurple.png", "Wall:SteelBlack": "assets/MapTile/Wall/SteelBlack.png", "Wall:SteelGary": "assets/MapTile/Wall/SteelGary.png", "Water:Pool": "assets/MapTile/Water/Pool.png", "Water:Sea": "assets/MapTile/Water/Sea.png", "Water:Ocean": "assets/MapTile/Water/Ocean.png", "Water:OceanCyan": "assets/MapTile/Water/OceanCyan.png", "Water:OceanCalm": "assets/MapTile/Water/OceanCalm.png", "Water:Swamp": "assets/MapTile/Water/Swamp.png", "Water:Waves": "assets/MapTile/Water/Waves.png", "Water:Shallow": "assets/MapTile/Water/Shallow.png", "Water:Lava": "assets/MapTile/Water/Lava.png", "FloorDecoration:EntryFlag": "assets/MapObject/FloorDecoration/EntryFlag.png", "FloorDecoration:ExitFlag": "assets/MapObject/FloorDecoration/ExitFlag.png", "FloorDecoration:BedTeal": "assets/MapObject/FloorDecoration/BedTeal.png", "FloorDecoration:PillowPink": "assets/MapObject/FloorDecoration/PillowPink.png", "FloorDecoration:TableBrown": "assets/MapObject/FloorDecoration/TableBrown.png", "FloorDecoration:ChairWood": "assets/MapObject/FloorDecoration/ChairWood.png", "FloorDecoration:ThroneRed": "assets/MapObject/FloorDecoration/ThroneRed.png", "FloorDecoration:KeyBronze": "assets/MapObject/FloorDecoration/KeyBronze.png", "FloorDecoration:KeySilver": "assets/MapObject/FloorDecoration/KeySilver.png", "FloorDecoration:KeyGold": "assets/MapObject/FloorDecoration/KeyGold.png", "FloorDecoration:VikingChair": "assets/MapObject/FloorDecoration/VikingChair.png", "FloorDecoration:Bed": "assets/MapObject/FloorDecoration/Bed.png", "FloorDecoration:Stairs": "assets/MapObject/FloorDecoration/Stairs.png", "FloorDecoration:AirConditioner": "assets/MapObject/FloorDecoration/AirConditioner.png", "FloorDecorationThemed:TeacherDesk": "assets/MapObject/FloorDecorationThemed/TeacherDesk.png", "FloorDecorationThemed:StudentDesk": "assets/MapObject/FloorDecorationThemed/StudentDesk.png", "FloorDecorationThemed:SinkDishes": "assets/MapObject/FloorDecorationThemed/SinkDishes.png", "FloorDecorationThemed:LaundryMachine": "assets/MapObject/FloorDecorationThemed/LaundryMachine.png", "FloorDecorationThemed:IroningBoard": "assets/MapObject/FloorDecorationThemed/IroningBoard.png", "FloorDecorationThemed:ShibariFrame": "assets/MapObject/FloorDecorationThemed/ShibariFrame.png", "FloorDecorationThemed:JapaneseTable": "assets/MapObject/FloorDecorationThemed/JapaneseTable.png", "FloorDecorationThemed:BanzaiTree": "assets/MapObject/FloorDecorationThemed/BanzaiTree.png", "FloorDecorationThemed:MedicalDesk": "assets/MapObject/FloorDecorationThemed/MedicalDesk.png", "FloorDecorationThemed:Toilet": "assets/MapObject/FloorDecorationThemed/Toilet.png", "FloorDecorationThemed:DeskBlue": "assets/MapObject/FloorDecorationThemed/DeskBlue.png", "FloorDecorationThemed:DeskPurple": "assets/MapObject/FloorDecorationThemed/DeskPurple.png", "FloorDecorationThemed:ConsoleLeft": "assets/MapObject/FloorDecorationThemed/ConsoleLeft.png", "FloorDecorationThemed:ConsoleRight": "assets/MapObject/FloorDecorationThemed/ConsoleRight.png", "FloorDecorationThemed:LongDeskLeft": "assets/MapObject/FloorDecorationThemed/LongDeskLeft.png", "FloorDecorationThemed:LongDeskRight": "assets/MapObject/FloorDecorationThemed/LongDeskRight.png", "FloorDecorationThemed:Cabinet": "assets/MapObject/FloorDecorationThemed/Cabinet.png", "FloorDecorationThemed:Television": "assets/MapObject/FloorDecorationThemed/Television.png", "FloorDecorationThemed:TelevisionBack": "assets/MapObject/FloorDecorationThemed/TelevisionBack.png", "FloorDecorationThemed:Wardrobe": "assets/MapObject/FloorDecorationThemed/Wardrobe.png", "FloorDecorationThemed:StandingBellflowerBanner": "assets/MapObject/FloorDecorationThemed/StandingBellflowerBanner.png", "FloorDecorationThemed:BondageClubBanner": "assets/MapObject/FloorDecorationThemed/BondageClubBanner.png", "FloorDecorationThemed:VoidOrderBanner": "assets/MapObject/FloorDecorationThemed/VoidOrderBanner.png", "FloorDecorationThemed:KatanaOnStand": "assets/MapObject/FloorDecorationThemed/KatanaOnStand.png", "FloorDecorationThemed:MagicMark": "assets/MapObject/FloorDecorationThemed/MagicMark.png", "FloorDecorationParty:BalloonFiveColor": "assets/MapObject/FloorDecorationParty/BalloonFiveColor.png", "FloorDecorationParty:BalloonTwoHeart": "assets/MapObject/FloorDecorationParty/BalloonTwoHeart.png", "FloorDecorationParty:WeddingCake": "assets/MapObject/FloorDecorationParty/WeddingCake.png", "FloorDecorationParty:WeddingArch": "assets/MapObject/FloorDecorationParty/WeddingArch.png", "FloorDecorationParty:FlowerVasePink": "assets/MapObject/FloorDecorationParty/FlowerVasePink.png", "FloorDecorationParty:BeachUmbrellaStripe": "assets/MapObject/FloorDecorationParty/BeachUmbrellaStripe.png", "FloorDecorationParty:BeachTowelStripe": "assets/MapObject/FloorDecorationParty/BeachTowelStripe.png", "FloorDecorationParty:Speaker": "assets/MapObject/FloorDecorationParty/Speaker.png", "FloorDecorationParty:Presents": "assets/MapObject/FloorDecorationParty/Presents.png", "FloorDecorationCamping:LogFire": "assets/MapObject/FloorDecorationCamping/LogFire.png", "FloorDecorationCamping:LogFireAnim0": "assets/MapObject/FloorDecorationCamping/LogFireAnim0.png", "FloorDecorationCamping:LogSingle": "assets/MapObject/FloorDecorationCamping/LogSingle.png", "FloorDecorationCamping:TentBlue": "assets/MapObject/FloorDecorationCamping/TentBlue.png", "FloorDecorationCamping:SleepingBagBlue": "assets/MapObject/FloorDecorationCamping/SleepingBagBlue.png", "FloorDecorationCamping:ChairRed": "assets/MapObject/FloorDecorationCamping/ChairRed.png", "FloorDecorationCamping:Hurdle1": "assets/MapObject/FloorDecorationCamping/Hurdle1.png", "FloorDecorationCamping:Hurdle2": "assets/MapObject/FloorDecorationCamping/Hurdle2.png", "FloorDecorationCamping:Hurdle3": "assets/MapObject/FloorDecorationCamping/Hurdle3.png", "FloorDecorationExpanding:CouchPinkPreview": "assets/MapObject/FloorDecorationExpanding/CouchPinkPreview.png", "FloorDecorationExpanding:BedBluePreview": "assets/MapObject/FloorDecorationExpanding/BedBluePreview.png", "FloorDecorationExpanding:BallPitPreview": "assets/MapObject/FloorDecorationExpanding/BallPitPreview.png", "FloorDecorationExpanding:VikingTablePreview": "assets/MapObject/FloorDecorationExpanding/VikingTablePreview.png", "FloorDecorationExpanding:RailroadPreview": "assets/MapObject/FloorDecorationExpanding/RailroadPreview.png", "FloorDecorationAnimal:CatCaramelHappy": "assets/MapObject/FloorDecorationAnimal/CatCaramelHappy.png", "FloorDecorationAnimal:DogBrownHappy": "assets/MapObject/FloorDecorationAnimal/DogBrownHappy.png", "FloorDecorationAnimal:RabbitBrownStand": "assets/MapObject/FloorDecorationAnimal/RabbitBrownStand.png", "FloorDecorationAnimal:ChickenBrownIdleLeft": "assets/MapObject/FloorDecorationAnimal/ChickenBrownIdleLeft.png", "FloorItem:Kennel": "assets/MapObject/FloorItem/Kennel.png", "FloorItem:X-Cross": "assets/MapObject/FloorItem/X-Cross.png", "FloorItem:BondageBench": "assets/MapObject/FloorItem/BondageBench.png", "FloorItem:Trolley": "assets/MapObject/FloorItem/Trolley.png", "FloorItem:Locker": "assets/MapObject/FloorItem/Locker.png", "FloorItem:WoodenBox": "assets/MapObject/FloorItem/WoodenBox.png", "FloorItem:Coffin": "assets/MapObject/FloorItem/Coffin.png", "FloorItem:TheDisplayFrame": "assets/MapObject/FloorItem/TheDisplayFrame.png", "FloorItem:Pole": "assets/MapObject/FloorItem/Pole.png", "FloorItem:MedicalBed": "assets/MapObject/FloorItem/MedicalBed.png", "FloorItem:FuturisticCrate": "assets/MapObject/FloorItem/FuturisticCrate.png", "FloorNumber:Number0": "assets/MapObject/FloorNumber/Number0.png", "FloorNumber:Number1": "assets/MapObject/FloorNumber/Number1.png", "FloorNumber:Number2": "assets/MapObject/FloorNumber/Number2.png", "FloorNumber:Number3": "assets/MapObject/FloorNumber/Number3.png", "FloorNumber:Number4": "assets/MapObject/FloorNumber/Number4.png", "FloorNumber:Number5": "assets/MapObject/FloorNumber/Number5.png", "FloorNumber:Number6": "assets/MapObject/FloorNumber/Number6.png", "FloorNumber:Number7": "assets/MapObject/FloorNumber/Number7.png", "FloorNumber:Number8": "assets/MapObject/FloorNumber/Number8.png", "FloorNumber:Number9": "assets/MapObject/FloorNumber/Number9.png", "FloorLetter:LetterA": "assets/MapObject/FloorLetter/LetterA.png", "FloorLetter:LetterB": "assets/MapObject/FloorLetter/LetterB.png", "FloorLetter:LetterC": "assets/MapObject/FloorLetter/LetterC.png", "FloorLetter:LetterD": "assets/MapObject/FloorLetter/LetterD.png", "FloorLetter:LetterE": "assets/MapObject/FloorLetter/LetterE.png", "FloorLetter:LetterF": "assets/MapObject/FloorLetter/LetterF.png", "FloorLetter:LetterG": "assets/MapObject/FloorLetter/LetterG.png", "FloorLetter:LetterH": "assets/MapObject/FloorLetter/LetterH.png", "FloorLetter:LetterI": "assets/MapObject/FloorLetter/LetterI.png", "FloorLetter:LetterJ": "assets/MapObject/FloorLetter/LetterJ.png", "FloorLetter:LetterK": "assets/MapObject/FloorLetter/LetterK.png", "FloorLetter:LetterL": "assets/MapObject/FloorLetter/LetterL.png", "FloorLetter:LetterM": "assets/MapObject/FloorLetter/LetterM.png", "FloorLetter:LetterN": "assets/MapObject/FloorLetter/LetterN.png", "FloorLetter:LetterO": "assets/MapObject/FloorLetter/LetterO.png", "FloorLetter:LetterP": "assets/MapObject/FloorLetter/LetterP.png", "FloorLetter:LetterQ": "assets/MapObject/FloorLetter/LetterQ.png", "FloorLetter:LetterR": "assets/MapObject/FloorLetter/LetterR.png", "FloorLetter:LetterS": "assets/MapObject/FloorLetter/LetterS.png", "FloorLetter:LetterT": "assets/MapObject/FloorLetter/LetterT.png", "FloorLetter:LetterU": "assets/MapObject/FloorLetter/LetterU.png", "FloorLetter:LetterV": "assets/MapObject/FloorLetter/LetterV.png", "FloorLetter:LetterW": "assets/MapObject/FloorLetter/LetterW.png", "FloorLetter:LetterX": "assets/MapObject/FloorLetter/LetterX.png", "FloorLetter:LetterY": "assets/MapObject/FloorLetter/LetterY.png", "FloorLetter:LetterZ": "assets/MapObject/FloorLetter/LetterZ.png", "FloorIcon:IconCircle": "assets/MapObject/FloorIcon/IconCircle.png", "FloorIcon:IconSquare": "assets/MapObject/FloorIcon/IconSquare.png", "FloorIcon:IconTriangle": "assets/MapObject/FloorIcon/IconTriangle.png", "FloorIcon:IconCross": "assets/MapObject/FloorIcon/IconCross.png", "FloorIcon:IconDiamond": "assets/MapObject/FloorIcon/IconDiamond.png", "FloorIcon:IconArrowUp": "assets/MapObject/FloorIcon/IconArrowUp.png", "FloorIcon:IconArrowDown": "assets/MapObject/FloorIcon/IconArrowDown.png", "FloorIcon:IconArrowLeft": "assets/MapObject/FloorIcon/IconArrowLeft.png", "FloorIcon:IconArrowRight": "assets/MapObject/FloorIcon/IconArrowRight.png", "FloorObstacle:Stalagmite": "assets/MapObject/FloorObstacle/Stalagmite.png", "FloorObstacle:Rocks": "assets/MapObject/FloorObstacle/Rocks.png", "FloorObstacle:GoldStones": "assets/MapObject/FloorObstacle/GoldStones.png", "FloorObstacle:StonePile": "assets/MapObject/FloorObstacle/StonePile.png", "FloorObstacle:Statue": "assets/MapObject/FloorObstacle/Statue.png", "FloorObstacle:Knight": "assets/MapObject/FloorObstacle/Knight.png", "FloorObstacle:Samurai": "assets/MapObject/FloorObstacle/Samurai.png", "FloorObstacle:Totem": "assets/MapObject/FloorObstacle/Totem.png", "FloorObstacle:EasterIsland": "assets/MapObject/FloorObstacle/EasterIsland.png", "FloorObstacle:OrderOfTheVoidTotem": "assets/MapObject/FloorObstacle/OrderOfTheVoidTotem.png", "FloorObstacle:Barrel": "assets/MapObject/FloorObstacle/Barrel.png", "FloorObstacle:Chest": "assets/MapObject/FloorObstacle/Chest.png", "FloorObstacle:IronBars": "assets/MapObject/FloorObstacle/IronBars.png", "FloorObstacle:BarbFence": "assets/MapObject/FloorObstacle/BarbFence.png", "FloorObstacle:PicketFence": "assets/MapObject/FloorObstacle/PicketFence.png", "FloorObstacle:VelourRopeBarrier": "assets/MapObject/FloorObstacle/VelourRopeBarrier.png", "FloorObstacle:Bush": "assets/MapObject/FloorObstacle/Bush.png", "FloorObstacle:OakTree": "assets/MapObject/FloorObstacle/OakTree.png", "FloorObstacle:OakTree_Fall": "assets/MapObject/FloorObstacle/OakTree_Fall.png", "FloorObstacle:LeaflessTree": "assets/MapObject/FloorObstacle/LeaflessTree.png", "FloorObstacle:PineTree": "assets/MapObject/FloorObstacle/PineTree.png", "FloorObstacle:PalmTree": "assets/MapObject/FloorObstacle/PalmTree.png", "FloorObstacle:Sakura": "assets/MapObject/FloorObstacle/Sakura.png", "FloorObstacle:Cactus": "assets/MapObject/FloorObstacle/Cactus.png", "FloorObstacle:ChristmasTree": "assets/MapObject/FloorObstacle/ChristmasTree.png", "FloorObstacle:Window": "assets/MapObject/FloorObstacle/Window.png", "FloorObstacle:TrashCan": "assets/MapObject/FloorObstacle/TrashCan.png", "FloorObstacle:RoadCone": "assets/MapObject/FloorObstacle/RoadCone.png", "FloorObstacle:LampPost": "assets/MapObject/FloorObstacle/LampPost.png", "FloorObstacle:Pillar": "assets/MapObject/FloorObstacle/Pillar.png", "WallDecoration:Painting": "assets/MapObject/WallDecoration/Painting.png", "WallDecoration:Mirror": "assets/MapObject/WallDecoration/Mirror.png", "WallDecoration:Candelabra0": "assets/MapObject/WallDecoration/Candelabra0.png", "WallDecoration:Whip": "assets/MapObject/WallDecoration/Whip.png", "WallDecoration:Fireplace": "assets/MapObject/WallDecoration/Fireplace.png", "WallDecoration:Stocking": "assets/MapObject/WallDecoration/Stocking.png", "WallDecoration:Moss": "assets/MapObject/WallDecoration/Moss.png", "WallDecoration:Vines": "assets/MapObject/WallDecoration/Vines.png", "WallDecoration:Vines2": "assets/MapObject/WallDecoration/Vines2.png", "WallDecoration:SilverShield": "assets/MapObject/WallDecoration/SilverShield.png", "WallDecoration:CrossedSabers": "assets/MapObject/WallDecoration/CrossedSabers.png", "WallDecoration:Window": "assets/MapObject/WallDecoration/Window.png", "WallDecoration:WindowNight": "assets/MapObject/WallDecoration/WindowNight.png", "WallDecoration:StainedGlass": "assets/MapObject/WallDecoration/StainedGlass.png", "WallDecoration:SchoolBoard": "assets/MapObject/WallDecoration/SchoolBoard.png", "WallDecoration:FirstAidKit": "assets/MapObject/WallDecoration/FirstAidKit.png", "WallDecoration:EyeTest": "assets/MapObject/WallDecoration/EyeTest.png", "WallDecoration:Scroll": "assets/MapObject/WallDecoration/Scroll.png", "WallDecoration:Wanted": "assets/MapObject/WallDecoration/Wanted.png", "WallDecoration:Bookshelf": "assets/MapObject/WallDecoration/Bookshelf.png", "WallDecoration:AirConditioner": "assets/MapObject/WallDecoration/AirConditioner.png", "WallDecoration:ShowerHead": "assets/MapObject/WallDecoration/ShowerHead.png", "WallDecoration:EnemaHead": "assets/MapObject/WallDecoration/EnemaHead.png", "WallDecoration:MonitorSmall": "assets/MapObject/WallDecoration/MonitorSmall.png", "WallDecoration:MonitorBigLeft": "assets/MapObject/WallDecoration/MonitorBigLeft.png", "WallDecoration:MonitorBigRight": "assets/MapObject/WallDecoration/MonitorBigRight.png", "WallPath:WoodOpen": "assets/MapObject/WallPath/WoodOpen.png", "WallPath:WoodClosed": "assets/MapObject/WallPath/WoodClosed.png", "WallPath:WoodLocked": "assets/MapObject/WallPath/WoodLocked.png", "WallPath:WoodLockedBronze": "assets/MapObject/WallPath/WoodLockedBronze.png", "WallPath:WoodLockedSilver": "assets/MapObject/WallPath/WoodLockedSilver.png", "WallPath:WoodLockedGold": "assets/MapObject/WallPath/WoodLockedGold.png", "WallPath:Metal": "assets/MapObject/WallPath/Metal.png", "WallPath:MetalUp": "assets/MapObject/WallPath/MetalUp.png", "WallPath:MetalDown": "assets/MapObject/WallPath/MetalDown.png", "WallPath:MetalLockedBronze": "assets/MapObject/WallPath/MetalLockedBronze.png", "WallPath:MetalLockedSilver": "assets/MapObject/WallPath/MetalLockedSilver.png", "WallPath:MetalLockedGold": "assets/MapObject/WallPath/MetalLockedGold.png", "WallPath:BrownDoor": "assets/MapObject/WallPath/BrownDoor.png", "WallPath:BrownDoorOpen": "assets/MapObject/WallPath/BrownDoorOpen.png", "WallPath:RoyalDoor": "assets/MapObject/WallPath/RoyalDoor.png", "WallPath:RoyalDoorOpen": "assets/MapObject/WallPath/RoyalDoorOpen.png", "WallPath:SteelDoor": "assets/MapObject/WallPath/SteelDoor.png", "WallPath:SteelDoorOpen": "assets/MapObject/WallPath/SteelDoorOpen.png", "WallPath:GrayDoor": "assets/MapObject/WallPath/GrayDoor.png", "WallPath:GrayDoorOpen": "assets/MapObject/WallPath/GrayDoorOpen.png", "Banners:Red": "assets/MapObject/Banners/Red.png", "Banners:Blue": "assets/MapObject/Banners/Blue.png", "Banners:Green": "assets/MapObject/Banners/Green.png", "Banners:Yellow": "assets/MapObject/Banners/Yellow.png", "Banners:Black": "assets/MapObject/Banners/Black.png", "Banners:PaladinBanner": "assets/MapObject/Banners/PaladinBanner.png", "Banners:ServiOrdinisBanner": "assets/MapObject/Banners/ServiOrdinisBanner.png", "Banners:BellflowerBanner": "assets/MapObject/Banners/BellflowerBanner.png", "Banners:BondageClub": "assets/MapObject/Banners/BondageClub.png", "Banners:Inquisition": "assets/MapObject/Banners/Inquisition.png", "Banners:MagesSacrosanctorum": "assets/MapObject/Banners/MagesSacrosanctorum.png", "Banners:MaidSorority": "assets/MapObject/Banners/MaidSorority.png", "Banners:Priesthood": "assets/MapObject/Banners/Priesthood.png", "Banners:VoidOrder": "assets/MapObject/Banners/VoidOrder.png", "Functional:EntryFlag": "assets/MapObject/FloorDecoration/EntryFlag.png", "Functional:ExitFlag": "assets/MapObject/FloorDecoration/ExitFlag.png", "Bedroom:BedTeal": "assets/MapObject/FloorDecoration/BedTeal.png", "LivingRoom:PillowPink": "assets/MapObject/FloorDecoration/PillowPink.png", "LivingRoom:TableBrown": "assets/MapObject/FloorDecoration/TableBrown.png", "LivingRoom:ChairWood": "assets/MapObject/FloorDecoration/ChairWood.png", "LivingRoom:ThroneRed": "assets/MapObject/FloorDecoration/ThroneRed.png", "Functional:KeyBronze": "assets/MapObject/FloorDecoration/KeyBronze.png", "Functional:KeySilver": "assets/MapObject/FloorDecoration/KeySilver.png", "Functional:KeyGold": "assets/MapObject/FloorDecoration/KeyGold.png", "LivingRoom:VikingChair": "assets/MapObject/FloorDecoration/VikingChair.png", "Bedroom:Bed": "assets/MapObject/FloorDecoration/Bed.png", "LivingRoom:Stairs": "assets/MapObject/FloorDecoration/Stairs.png", "LivingRoom:AirConditioner": "assets/MapObject/FloorDecoration/AirConditioner.png", "School:TeacherDesk": "assets/MapObject/FloorDecorationThemed/TeacherDesk.png", "School:StudentDesk": "assets/MapObject/FloorDecorationThemed/StudentDesk.png", "Bathroom:LaundryMachine": "assets/MapObject/FloorDecorationThemed/LaundryMachine.png", "Bathroom:IroningBoard": "assets/MapObject/FloorDecorationThemed/IroningBoard.png", "LivingRoom:JapaneseTable": "assets/MapObject/FloorDecorationThemed/JapaneseTable.png", "Bathroom:Toilet": "assets/MapObject/FloorDecorationThemed/Toilet.png", "LivingRoom:Television": "assets/MapObject/FloorDecorationThemed/Television.png", "LivingRoom:TelevisionBack": "assets/MapObject/FloorDecorationThemed/TelevisionBack.png", "Bedroom:Wardrobe": "assets/MapObject/FloorDecorationThemed/Wardrobe.png", "School:Locker": "assets/MapObject/FloorItem/Locker.png", "Bathroom:Mirror": "assets/MapObject/WallDecoration/Mirror.png", "LivingRoom:Fireplace": "assets/MapObject/WallDecoration/Fireplace.png", "School:SchoolBoard": "assets/MapObject/WallDecoration/SchoolBoard.png", "LivingRoom:Bookshelf": "assets/MapObject/WallDecoration/Bookshelf.png", "Bathroom:ShowerHead": "assets/MapObject/WallDecoration/ShowerHead.png", "Bathroom:EnemaHead": "assets/MapObject/WallDecoration/EnemaHead.png"};</script>
@@ -2746,8 +2863,24 @@ window.MAP_ZH_LABELS = {
     r = Math.max(0, Math.min(255, r + dl)); g = Math.max(0, Math.min(255, g + dl)); b = Math.max(0, Math.min(255, b + dl));
     return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
   }
+  // Colour words inside a style id ("TileLightBlue", "CarpetPink") tint the placeholder block, so even a
+  // part whose thumbnail is missing is distinguishable instead of showing one flat brown.
+  const TOKEN_COLORS = {
+    White: "#e8e8e8", Gray: "#8c9096", Grey: "#8c9096", Black: "#2e2e32", Blue: "#3b6fd0", LightBlue: "#7fb8ea",
+    Green: "#4f9d52", Red: "#c24444", Orange: "#e08a2e", Yellow: "#e6cf45", Pink: "#e58fb6", Purple: "#8a5cc2",
+    Brown: "#8b5e3c", Teal: "#2fa19a", Cyan: "#35b8d0", Beige: "#d8c8a4", Gold: "#e0b83a", Silver: "#b4b8be",
+    Bronze: "#b87333", Magenta: "#c23f9c", Navy: "#1f2f6b", Lime: "#8fd03a", Maroon: "#7a2230", Violet: "#9a63d6",
+  };
+  function tokenColor(style) {
+    const m = String(style || "").match(/(Light)?(White|Gr[ae]y|Black|Blue|Green|Red|Orange|Yellow|Pink|Purple|Brown|Teal|Cyan|Beige|Gold|Silver|Bronze|Magenta|Navy|Lime|Maroon|Violet)(?=[A-Z0-9]|$)/);
+    if (!m) return null;
+    const name = (m[1] && m[2] === "Blue") ? "LightBlue" : m[2];
+    return TOKEN_COLORS[name] || null;
+  }
   function colorFor(comp) {
     const t = comp.type, s = comp.style || "";
+    const tc = imgFor(comp) ? null : tokenColor(s); // only tint the placeholder when there is no thumbnail
+    if (tc) return tc;
     let base;
     if (t === "Wall" || s === "HalfWall") base = "#7f8c9b";
     else if (t === "Floor") base = "#b5895a";
@@ -2812,7 +2945,7 @@ window.MAP_ZH_LABELS = {
     { id: "wall.walldeco", top: "wall", labelKey: "cat.walldeco", match: (c) => c.type === "WallDecoration" },
     { id: "wall.banner", top: "wall", labelKey: "cat.banners", match: (c) => c.type === "Banners" },
     { id: "deco.obstacle", top: "deco", labelKey: "cat.obstacle", match: (c) => c.type === "FloorObstacle" },
-    { id: "deco.furniture", top: "deco", labelKey: "cat.furniture", match: (c) => c.type === "FloorDecorationThemed" || c.type === "FloorDecorationExpanding" || c.type === "FloorFoamTiles" || c.type === "ABDL" || c.type === "School" || c.type === "Bathroom" || ((c.type === "FloorDecoration" || c.type === "LivingRoom") && !BEDDING_STYLES.has(c.style)) },
+    { id: "deco.furniture", top: "deco", labelKey: "cat.furniture", match: (c) => (c.layer === "object" && c.style === "Blank") || c.type === "FloorDecorationThemed" || c.type === "FloorDecorationExpanding" || c.type === "FloorFoamTiles" || c.type === "ABDL" || c.type === "School" || c.type === "Bathroom" || ((c.type === "FloorDecoration" || c.type === "LivingRoom") && !BEDDING_STYLES.has(c.style)) },
     { id: "deco.bedding", top: "deco", labelKey: "cat.bedding", match: (c) => c.type === "Bedroom" || ((c.type === "FloorDecoration" || c.type === "LivingRoom") && BEDDING_STYLES.has(c.style)) },
     { id: "deco.party", top: "deco", labelKey: "cat.party", match: (c) => c.type === "FloorDecorationParty" },
     { id: "deco.outdoor", top: "deco", labelKey: "cat.outdoorProps", match: (c) => c.type === "FloorDecorationCamping" },
@@ -2831,17 +2964,27 @@ window.MAP_ZH_LABELS = {
     { id: "item", labelKey: "cat2.item", subs: ["item.gate", "item.key", "item.item"] },
     { id: "marker", labelKey: "cat2.marker", subs: ["marker.number", "marker.letter", "marker.icon"] },
   ];
-  function leafDef(id) { return LEAVES.find((l) => l.id === id); }
+  // A part whose `Type` matches none of the rules above (BC introduced a brand-new category) is NOT
+  // dropped or mis-filed: it gets its own sub-group under an automatic "Other (new)" top group,
+  // named after the type, and is fully paintable. Maintainers may add a rule above later (optional).
+  const DYN_LEAVES = {};
+  function leafDef(id) { return LEAVES.find((l) => l.id === id) || DYN_LEAVES[id]; }
   function topDef(id) { return TOPS.find((t) => t.id === id); }
+  function leafLabel(leaf) { return leaf.dynType ? I18N.typeLabel(leaf.dynType) : T(leaf.labelKey); }
   function classify(comp) {
     for (const l of LEAVES) if (l.match(comp)) return l.id;
-    return "deco.furniture"; // safety net — should not normally hit
+    const id = "other:" + comp.layer + ":" + comp.type;
+    if (!DYN_LEAVES[id]) DYN_LEAVES[id] = { id, top: "other", dynType: comp.type, match: (c) => c.layer === comp.layer && c.type === comp.type };
+    return id;
   }
   const LEAF_ITEMS = {};
   [].concat(CAT.tiles, CAT.objects).forEach((c) => {
     const id = classify(c);
     (LEAF_ITEMS[id] = LEAF_ITEMS[id] || []).push(c);
   });
+  if (Object.keys(DYN_LEAVES).length) {
+    TOPS.push({ id: "other", labelKey: "cat2.other", subs: Object.keys(DYN_LEAVES).sort() });
+  }
 
   // ---------- state ----------
   const state = {
@@ -2936,13 +3079,13 @@ window.MAP_ZH_LABELS = {
       const all = [].concat(CAT.tiles, CAT.objects).filter(matchSearch);
       const byLeaf = {};
       all.forEach((c) => { const lid = classify(c); (byLeaf[lid] = byLeaf[lid] || []).push(c); });
-      sections = Object.keys(byLeaf).map((lid) => ({ label: T(leafDef(lid).labelKey), items: byLeaf[lid] }));
+      sections = Object.keys(byLeaf).map((lid) => ({ label: leafLabel(leafDef(lid)), items: byLeaf[lid] }));
     } else if (state.category.indexOf(".") === -1) {
       const top = topDef(state.category);
-      sections = (top ? top.subs : []).map((sid) => ({ label: T(leafDef(sid).labelKey), items: LEAF_ITEMS[sid] || [] })).filter((s) => s.items.length);
+      sections = (top ? top.subs : []).map((sid) => ({ label: leafLabel(leafDef(sid)), items: LEAF_ITEMS[sid] || [] })).filter((s) => s.items.length);
     } else {
       const leaf = leafDef(state.category);
-      sections = leaf ? [{ label: T(leaf.labelKey), items: LEAF_ITEMS[state.category] || [] }] : [];
+      sections = leaf ? [{ label: leafLabel(leaf), items: LEAF_ITEMS[state.category] || [] }] : [];
     }
     let total = 0;
     sections.forEach((sec) => {
@@ -3006,7 +3149,7 @@ window.MAP_ZH_LABELS = {
         const leaf = leafDef(sid);
         const b = document.createElement("button"); b.type = "button";
         b.className = "cat-sub-item" + (state.category === sid ? " active" : "");
-        b.textContent = T(leaf.labelKey);
+        b.textContent = leafLabel(leaf);
         b.addEventListener("click", (e) => { e.stopPropagation(); selectCategory(sid); });
         subList.appendChild(b);
       });
@@ -3022,7 +3165,7 @@ window.MAP_ZH_LABELS = {
     } else {
       const leaf = leafDef(state.category);
       if (!leaf) { el.textContent = ""; return; }
-      el.textContent = T(topDef(leaf.top).labelKey) + " › " + T(leaf.labelKey);
+      el.textContent = T(topDef(leaf.top).labelKey) + " › " + leafLabel(leaf);
     }
   }
   function selectCategory(catId) {

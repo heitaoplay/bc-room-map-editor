@@ -55,6 +55,7 @@
       "cat2.deco": "装饰",
       "cat2.item": "道具",
       "cat2.marker": "标记",
+      "cat2.other": "其他（新增）",
       "cat.furniture": "家具",
       "cat.bedding": "寝具",
       "cat.party": "派对道具",
@@ -147,6 +148,7 @@
       "cat2.deco": "裝飾",
       "cat2.item": "道具",
       "cat2.marker": "標記",
+      "cat2.other": "其他（新增）",
       "cat.furniture": "家具",
       "cat.bedding": "寢具",
       "cat.party": "派對道具",
@@ -239,6 +241,7 @@
       "cat2.deco": "Decoration",
       "cat2.item": "Props",
       "cat2.marker": "Marker",
+      "cat2.other": "Other (new)",
       "cat.furniture": "Furniture",
       "cat.bedding": "Bedding",
       "cat.party": "Party",
@@ -331,6 +334,7 @@
       "cat2.deco": "Dekoration",
       "cat2.item": "Requisiten",
       "cat2.marker": "Markierung",
+      "cat2.other": "Sonstige (neu)",
       "cat.furniture": "Möbel",
       "cat.bedding": "Bettwäsche",
       "cat.party": "Party",
@@ -423,6 +427,7 @@
       "cat2.deco": "Décoration",
       "cat2.item": "Accessoires",
       "cat2.marker": "Marqueur",
+      "cat2.other": "Autres (nouveau)",
       "cat.furniture": "Meubles",
       "cat.bedding": "Literie",
       "cat.party": "Fête",
@@ -515,6 +520,7 @@
       "cat2.deco": "Декор",
       "cat2.item": "Реквизит",
       "cat2.marker": "Метка",
+      "cat2.other": "Прочее (новое)",
       "cat.furniture": "Мебель",
       "cat.bedding": "Постельное бельё",
       "cat.party": "Вечеринка",
@@ -607,6 +613,7 @@
       "cat2.deco": "Декор",
       "cat2.item": "Реквізит",
       "cat2.marker": "Мітка",
+      "cat2.other": "Інше (нове)",
       "cat.furniture": "Меблі",
       "cat.bedding": "Постільна білизна",
       "cat.party": "Вечірка",
@@ -704,18 +711,56 @@
   function available() { return Object.keys(DICT); }
   function localeName(loc) { return LOCALE_NAMES[loc] || loc; }
 
-  // Localized label for a catalog component.
-  // cn/tw use the Chinese zh-label; every other locale falls back to the BC
-  // English `style` name (asset images are language-neutral).
-  const ZH = (typeof window !== "undefined" && window.MAP_ZH_LABELS) || {};
+  // Localized label for a catalog component. Resolution order for cn / tw:
+  //   exact zh-label  ->  composed from the token dictionary (auto-labels.js, every token must be known)
+  //   ->  BC's English `name`  ->  style id split into words.
+  // Other locales show the BC style id as before (asset images are language-neutral).
+  // So a part that BC adds tomorrow is selectable immediately, with no translation work.
+  const W = (typeof window !== "undefined") ? window : {};
+  const ZH = W.MAP_ZH_LABELS || {};
   // Conveyor belts share one style per speed; the walking direction distinguishes the 4 ids.
   const DIR_ARROW = { West: "←", East: "→", South: "↓", North: "↑" };
+  function words(id) { return String(id || "").match(/[A-Z]+(?![a-z])|[A-Z]?[a-z]+|\d+/g) || []; }
+  function prettify(id) { return words(id).join(" ") || String(id || "?"); }
+  // Join "Light"+"Blue" etc. Returns a Chinese string or null when ANY token is unknown.
+  function composeZh(style, tw) {
+    const COL = (tw && W.MAP_ZH_COLORS_TW) || W.MAP_ZH_COLORS || {};
+    const MOD = (tw && W.MAP_ZH_MODIFIERS_TW) || W.MAP_ZH_MODIFIERS || {};
+    const WRD = (tw && W.MAP_ZH_WORDS_TW) || W.MAP_ZH_WORDS || {};
+    const tk = words(style);
+    if (!tk.length) return null;
+    const colors = [], rest = [];
+    for (let i = 0; i < tk.length; i++) {
+      const t = tk[i], nx = tk[i + 1];
+      if (/^\d+$/.test(t)) { rest.push(t); continue; }
+      if (MOD[t] && nx && COL[nx]) { colors.push(MOD[t] + COL[nx]); i++; continue; } // LightBlue -> 浅蓝色
+      if (COL[t]) { colors.push(COL[t]); continue; }
+      if (WRD[t]) { rest.push(WRD[t]); continue; }
+      return null; // unknown word -> let the caller fall back to English
+    }
+    return colors.concat(rest).join("");
+  }
   function labelForComp(comp) {
     const key = (comp.type || "") + ":" + (comp.style || "");
     const arrow = comp.dir ? " " + (DIR_ARROW[comp.dir] || comp.dir) : "";
-    if (current === "cn" || current === "tw") return (ZH[key] || comp.style || "?") + arrow;
+    if (current === "cn" || current === "tw") {
+      const tw = current === "tw";
+      const table = (tw && W.MAP_ZH_LABELS_TW) || ZH;
+      if (table[key]) return table[key] + arrow;
+      const auto = composeZh(comp.style, tw);
+      if (auto) return auto + arrow;
+      return (comp.name || prettify(comp.style)) + arrow;
+    }
     return (comp.style || "?") + arrow;
   }
+  // Display name of a `Type` (used for automatically created "unknown type" category groups).
+  function typeLabel(type) {
+    if (current === "cn" || current === "tw") {
+      const t = (current === "tw" && W.MAP_ZH_TYPES_TW) || W.MAP_ZH_TYPES || {};
+      if (t[type]) return t[type];
+    }
+    return prettify(type);
+  }
 
-  window.MAP_I18N = { t, setLocale, getLocale, getSavedLocale, available, localeName, labelForComp, LOCALE_NAMES };
+    window.MAP_I18N = { t, setLocale, getLocale, getSavedLocale, available, localeName, labelForComp, typeLabel, LOCALE_NAMES };
 })();

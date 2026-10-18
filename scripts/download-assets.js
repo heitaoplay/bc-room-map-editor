@@ -11,8 +11,8 @@
 const fs = require("fs");
 const path = require("path");
 const https = require("https");
-const cat = require("../src/catalog.json");
-const root = path.join(__dirname, "..");
+const root = process.env.BC_ROOT || path.join(__dirname, "..");
+const cat = JSON.parse(fs.readFileSync(path.join(root, "src", "catalog.json"), "utf8"));
 const force = process.argv.includes("--force");
 const customBase = (process.argv.find((a) => a.startsWith("--base=")) || "").slice(7);
 

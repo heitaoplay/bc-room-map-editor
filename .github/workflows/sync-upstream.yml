@@ -1,0 +1,63 @@
+name: Sync BC map data
+
+# Runs once a day. If the official repo has nothing new for the map (Assets/MapData.js or Assets/Map/),
+# the script exits early, nothing is committed and the site is NOT redeployed.
+on:
+  schedule:
+    - cron: "17 19 * * *"   # 19:17 UTC = 03:17 Taiwan time
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Ignore saved state and re-sync everything (use for the very first run)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write   # commit catalog / images / assets back to main
+  actions: write    # trigger the Pages deploy (commits pushed with GITHUB_TOKEN do not trigger it by themselves)
+
+concurrency:
+  group: sync-upstream
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - run: npm ci
+
+      - name: Sync from upstream (skips itself when nothing changed)
+        id: sync
+        run: node scripts/sync-upstream.js ${{ inputs.force && '--force' || '' }}
+
+      - name: Smoke tests on the regenerated editor
+        if: steps.sync.outputs.updated == 'true'
+        run: npm test
+
+      - name: Commit and redeploy
+        if: steps.sync.outputs.updated == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A src/catalog.json src/images.json assets data index.html
+          if git diff --cached --quiet; then
+            echo "Upstream changed but nothing in our output differs - no commit."
+            exit 0
+          fi
+          missing=$(node -p "require('./data/upstream-state.json').counts.missingImages")
+          git commit -m "chore(sync): update BC map catalog/assets from upstream [${missing} thumbnails still missing]"
+          git pull --rebase origin main
+          git push origin main
+          gh workflow run pages.yml --ref main

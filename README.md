@@ -54,7 +54,8 @@ A visual editor that turns "text descriptions / grid clicks" into a BC map data 
 │   ├── editor-src.html #   带占位符的 HTML 模板
 │   ├── editor-ui.js    #   编辑器交互逻辑
 │   ├── i18n.js          #   多语言框架
-│   ├── zh-labels.js    #   部件中文名（cn/tw 界面用）
+│   ├── zh-labels.js    #   部件中文名（可選；沒有的會自動組字，見下方「自動同步」）
+│   ├── auto-labels.js  #   自動組字用的詞庫（顏色/材質/物件名；可選，缺字自動退回英文）
 │   ├── map-lib.js      #   编码库（Node + 浏览器通用）：encode/decode/gridToChars/charsToGrid/validateId/idByStyle
 │   ├── LZString.js     #   压缩库
 │   ├── catalog.json    #   部件目录：170 地板/墙体 + 280 物件 + 8 效果（R133），含 byId/byStyle 索引
@@ -62,9 +63,13 @@ A visual editor that turns "text descriptions / grid clicks" into a BC map data 
 ├── scripts/            # 构建 / 维护脚本
 │   ├── build-editor.js #   把 src/ 下所有源码内联进 index.html
 │   ├── extract-catalog.js  # 从 BC 源码抽部件表 → src/catalog.json
-│   └── download-assets.js  # 下载缩略图 → assets/ + src/images.json
+│   ├── download-assets.js  # （备援）HTTP 下载缩略图 → assets/ + src/images.json
+│   └── sync-upstream.js    # 每日自動同步：官方 repo → catalog.json / assets/ / index.html
+├── data/
+│   └── upstream-state.json # 上次同步的官方版本指紋 + 仍缺圖清單（同步時自動維護，勿手改）
 ├── tests/
-│   └── test-editor.js  # jsdom 无头冒烟测试（读取根目录 index.html）
+│   ├── test-editor.js  # jsdom 无头冒烟测试（读取根目录 index.html）
+│   └── test-sync.js    # 離線測試：同步流程 + 「新增部件/新分類」自動可用
 └── examples/
     ├── example.js       # 示例：外墙 + 金锁门 + 金钥匙 + 雕像 + 入口旗，encode→decode 往返验证
     └── example-map.txt  # 上面脚本输出的可直接 /mappaste 的串
@@ -78,7 +83,8 @@ A visual editor that turns "text descriptions / grid clicks" into a BC map data 
 │   ├── editor-src.html #   HTML template with placeholders
 │   ├── editor-ui.js    #   Editor interaction logic
 │   ├── i18n.js          #   Multilingual framework
-│   ├── zh-labels.js    #   Chinese names for parts (used by cn/tw interfaces)
+│   ├── zh-labels.js    #   Chinese names for parts (optional; missing ones are composed automatically, see "Auto sync" below)
+│   ├── auto-labels.js  #   Word dictionary for auto-composed labels (colors/materials/objects; optional, unknown words fall back to English)
 │   ├── map-lib.js      #   Encoding library (Node + browser compatible): encode/decode/gridToChars/charsToGrid/validateId/idByStyle
 │   ├── LZString.js     #   Compression library
 │   ├── catalog.json    #   Parts catalog: 170 floors/walls + 280 objects + 8 effects (R133), with byId/byStyle indexes
@@ -86,9 +92,13 @@ A visual editor that turns "text descriptions / grid clicks" into a BC map data 
 ├── scripts/            # Build / maintenance scripts
 │   ├── build-editor.js #   Inlines all source files under src/ into index.html
 │   ├── extract-catalog.js  # Extracts the parts table from BC source → src/catalog.json
-│   └── download-assets.js  # Downloads thumbnails → assets/ + src/images.json
+│   ├── download-assets.js  # (fallback) HTTP thumbnail download → assets/ + src/images.json
+│   └── sync-upstream.js    # Daily auto-sync: official repo → catalog.json / assets / index.html
+├── data/
+│   └── upstream-state.json # Fingerprint of the last synced upstream + list of still-missing thumbnails (maintained by the sync, do not edit)
 ├── tests/
-│   └── test-editor.js  # jsdom headless smoke test (reads index.html from the repo root)
+│   ├── test-editor.js  # jsdom headless smoke test (reads index.html from the repo root)
+│   └── test-sync.js    # Offline test: sync pipeline + "new part / new category just works"
 └── examples/
     ├── example.js       # Example: outer wall + gold-locked door + gold key + statue + entrance flag, encode→decode round-trip verification
     └── example-map.txt  # The ready-to-/mappaste string output by the script above
@@ -114,7 +124,7 @@ A visual editor that turns "text descriptions / grid clicks" into a BC map data 
 ## R133 更新说明 / R133 update notes
 
 - 部件目录改从 `Assets/MapData.js` 抽取：`node scripts/extract-catalog.js <BondageClub/Assets/MapData.js>`；旧的 `Type:Style` 键保留为别名（`catalog.legacy`）。
-- 缩略图下载改为新路径 `Assets/Map/Tiles|Objects/<Type>/<Style>.png`，且为增量下载：`node scripts/download-assets.js [--base=<游戏网址/>]`，之后 `npm run build`。目前 `src/images.json` 里仍有约 166 项没有图（沙盒无法连线），会显示色块。
+- 缩略图下载改为新路径 `Assets/Map/Tiles|Objects/<Type>/<Style>.png`，且为增量下载：`node scripts/download-assets.js [--base=<游戏网址/>]`，之后 `npm run build`。缺圖的部件會顯示色塊，並在每日同步時自動補上（見上方「自動同步」）。
 - 导入/导出保留 R133 的告示牌文字（`CellData`）与灯光效果（`@` 之后的段落），编辑器本身不能编辑它们，但不会再被洗掉。
 - 输送带 4 个方向在名称后以 ← → ↑ ↓ 区分。
 
