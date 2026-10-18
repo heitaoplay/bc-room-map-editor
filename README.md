@@ -57,7 +57,7 @@ A visual editor that turns "text descriptions / grid clicks" into a BC map data 
 │   ├── zh-labels.js    #   部件中文名（cn/tw 界面用）
 │   ├── map-lib.js      #   编码库（Node + 浏览器通用）：encode/decode/gridToChars/charsToGrid/validateId/idByStyle
 │   ├── LZString.js     #   压缩库
-│   ├── catalog.json    #   部件目录：53 地板/墙体 + 225 物件 + 8 效果，含 byId/byStyle 索引
+│   ├── catalog.json    #   部件目录：170 地板/墙体 + 280 物件 + 8 效果（R133），含 byId/byStyle 索引
 │   └── images.json     #   部件缩略图路径清单
 ├── scripts/            # 构建 / 维护脚本
 │   ├── build-editor.js #   把 src/ 下所有源码内联进 index.html
@@ -81,7 +81,7 @@ A visual editor that turns "text descriptions / grid clicks" into a BC map data 
 │   ├── zh-labels.js    #   Chinese names for parts (used by cn/tw interfaces)
 │   ├── map-lib.js      #   Encoding library (Node + browser compatible): encode/decode/gridToChars/charsToGrid/validateId/idByStyle
 │   ├── LZString.js     #   Compression library
-│   ├── catalog.json    #   Parts catalog: 53 floors/walls + 225 objects + 8 effects, with byId/byStyle indexes
+│   ├── catalog.json    #   Parts catalog: 170 floors/walls + 280 objects + 8 effects (R133), with byId/byStyle indexes
 │   └── images.json     #   List of part thumbnail paths
 ├── scripts/            # Build / maintenance scripts
 │   ├── build-editor.js #   Inlines all source files under src/ into index.html
@@ -110,6 +110,13 @@ A visual editor that turns "text descriptions / grid clicks" into a BC map data 
    Click "Generate Code" → "Copy", then type `/mappaste <string>` in the game's chat box to lay out the map.
 5. 反向：把已有串贴进下方文本框（自动识别）即可在编辑器里继续改；或点「导入文件」载入本地 `.txt`。
    Reverse direction: paste an existing string into the textbox below (auto-detected) to continue editing it in the editor; or click "Import File" to load a local `.txt` file.
+
+## R133 更新说明 / R133 update notes
+
+- 部件目录改从 `Assets/MapData.js` 抽取：`node scripts/extract-catalog.js <BondageClub/Assets/MapData.js>`；旧的 `Type:Style` 键保留为别名（`catalog.legacy`）。
+- 缩略图下载改为新路径 `Assets/Map/Tiles|Objects/<Type>/<Style>.png`，且为增量下载：`node scripts/download-assets.js [--base=<游戏网址/>]`，之后 `npm run build`。目前 `src/images.json` 里仍有约 166 项没有图（沙盒无法连线），会显示色块。
+- 导入/导出保留 R133 的告示牌文字（`CellData`）与灯光效果（`@` 之后的段落），编辑器本身不能编辑它们，但不会再被洗掉。
+- 输送带 4 个方向在名称后以 ← → ↑ ↓ 区分。
 
 ## 开发 / 验证
 ## Development / Verification

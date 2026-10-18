@@ -708,10 +708,13 @@
   // cn/tw use the Chinese zh-label; every other locale falls back to the BC
   // English `style` name (asset images are language-neutral).
   const ZH = (typeof window !== "undefined" && window.MAP_ZH_LABELS) || {};
+  // Conveyor belts share one style per speed; the walking direction distinguishes the 4 ids.
+  const DIR_ARROW = { West: "←", East: "→", South: "↓", North: "↑" };
   function labelForComp(comp) {
     const key = (comp.type || "") + ":" + (comp.style || "");
-    if (current === "cn" || current === "tw") return ZH[key] || comp.style || "?";
-    return comp.style || "?";
+    const arrow = comp.dir ? " " + (DIR_ARROW[comp.dir] || comp.dir) : "";
+    if (current === "cn" || current === "tw") return (ZH[key] || comp.style || "?") + arrow;
+    return (comp.style || "?") + arrow;
   }
 
   window.MAP_I18N = { t, setLocale, getLocale, getSavedLocale, available, localeName, labelForComp, LOCALE_NAMES };

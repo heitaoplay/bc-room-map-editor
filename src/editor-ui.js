@@ -32,8 +32,10 @@
     else if (t === "Floor") base = "#b5895a";
     else if (t === "WallPath") base = "#e0a93b";
     else if (t === "FloorObstacle") base = "#c0563f";
-    else if (t === "FloorDecoration") base = /^Key/.test(s) ? "#ffe14d" : (s === "EntryFlag" || s === "ExitFlag") ? "#5fd06b" : "#3fae9b";
+    else if (t === "FloorDecoration" || t === "Functional") base = /^Key/.test(s) ? "#ffe14d" : (s === "EntryFlag" || s === "ExitFlag") ? "#5fd06b" : /^(ConveyorBelt|Sign)/.test(s) ? "#8a8f98" : "#3fae9b";
     else if (t === "FloorItem") base = "#9b6bd6";
+    else if (t === "FloorFoamTiles" || t === "ABDL") base = "#e08fc0";
+    else if (t === "LivingRoom" || t === "Bedroom" || t === "Bathroom" || t === "School" || t === "FloorDecorationThemed") base = "#3fae9b";
     else if (t === "FloorNumber" || t === "FloorLetter" || t === "FloorIcon") base = "#56c0e0";
     else if (t === "Banners") base = "#d36ba0";
     else if (t === "Water") base = "#2f7fae";
@@ -89,14 +91,14 @@
     { id: "wall.walldeco", top: "wall", labelKey: "cat.walldeco", match: (c) => c.type === "WallDecoration" },
     { id: "wall.banner", top: "wall", labelKey: "cat.banners", match: (c) => c.type === "Banners" },
     { id: "deco.obstacle", top: "deco", labelKey: "cat.obstacle", match: (c) => c.type === "FloorObstacle" },
-    { id: "deco.furniture", top: "deco", labelKey: "cat.furniture", match: (c) => c.type === "FloorDecorationThemed" || c.type === "FloorDecorationExpanding" || (c.type === "FloorDecoration" && FURNITURE_STYLES.has(c.style)) },
-    { id: "deco.bedding", top: "deco", labelKey: "cat.bedding", match: (c) => c.type === "FloorDecoration" && BEDDING_STYLES.has(c.style) },
+    { id: "deco.furniture", top: "deco", labelKey: "cat.furniture", match: (c) => c.type === "FloorDecorationThemed" || c.type === "FloorDecorationExpanding" || c.type === "FloorFoamTiles" || c.type === "ABDL" || c.type === "School" || c.type === "Bathroom" || ((c.type === "FloorDecoration" || c.type === "LivingRoom") && !BEDDING_STYLES.has(c.style)) },
+    { id: "deco.bedding", top: "deco", labelKey: "cat.bedding", match: (c) => c.type === "Bedroom" || ((c.type === "FloorDecoration" || c.type === "LivingRoom") && BEDDING_STYLES.has(c.style)) },
     { id: "deco.party", top: "deco", labelKey: "cat.party", match: (c) => c.type === "FloorDecorationParty" },
     { id: "deco.outdoor", top: "deco", labelKey: "cat.outdoorProps", match: (c) => c.type === "FloorDecorationCamping" },
     { id: "deco.animal", top: "deco", labelKey: "cat.animal", match: (c) => c.type === "FloorDecorationAnimal" },
-    { id: "item.gate", top: "item", labelKey: "cat.gate", match: (c) => c.type === "FloorDecoration" && (c.style === "EntryFlag" || c.style === "ExitFlag") },
-    { id: "item.key", top: "item", labelKey: "cat.key", match: (c) => c.type === "FloorDecoration" && /^Key/.test(c.style || "") },
-    { id: "item.item", top: "item", labelKey: "cat.item", match: (c) => c.type === "FloorItem" },
+    { id: "item.gate", top: "item", labelKey: "cat.gate", match: (c) => (c.type === "FloorDecoration" || c.type === "Functional") && (c.style === "EntryFlag" || c.style === "ExitFlag") },
+    { id: "item.key", top: "item", labelKey: "cat.key", match: (c) => (c.type === "FloorDecoration" || c.type === "Functional") && /^Key/.test(c.style || "") },
+    { id: "item.item", top: "item", labelKey: "cat.item", match: (c) => c.type === "FloorItem" || (c.type === "Functional" && /^(ConveyorBelt|Sign)/.test(c.style || "")) },
     { id: "marker.number", top: "marker", labelKey: "cat.number", match: (c) => c.type === "FloorNumber" },
     { id: "marker.letter", top: "marker", labelKey: "cat.letter", match: (c) => c.type === "FloorLetter" },
     { id: "marker.icon", top: "marker", labelKey: "cat.icon", match: (c) => c.type === "FloorIcon" },
@@ -467,7 +469,7 @@
   // ---------- export / import ----------
   function exportStr() {
     try {
-      const str = MapLib.encode({ type: state.type, tiles: state.tilesGrid, objects: state.objGrid, fog: state.fog });
+      const str = MapLib.encode({ type: state.type, tiles: state.tilesGrid, objects: state.objGrid, fog: state.fog, cellData: state.cellData, effects: state.effects });
       document.getElementById("output").value = str;
       updateStats(true, str.length);
       return str;
@@ -486,6 +488,10 @@
       pushHistory();
       state.tilesGrid = MapLib.charsToGrid(data.Tiles);
       state.objGrid = MapLib.charsToGrid(data.Objects);
+      state.cellData = data.CellData || null;   // R133 sign texts
+      state.effects = data._effects || "";      // R133 lighting ("@...") — kept as-is on export
+      const unk = MapLib.unknownIds(data.Tiles, "tile").length + MapLib.unknownIds(data.Objects, "object").length;
+      if (unk) console.warn("[editor] " + unk + " unknown component id(s): catalog is older than the map's game version");
       if (typeof data.Fog === "boolean") { state.fog = data.Fog; document.getElementById("fog").checked = data.Fog; }
       if (data.Type) { state.type = data.Type; document.getElementById("typeSel").value = data.Type; }
       renderGrid(); updateStats(true, str.length, T("flash.loaded"));
