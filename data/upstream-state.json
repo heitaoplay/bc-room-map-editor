@@ -2,11 +2,11 @@
   "upstream": {
     "repo": "https://gitgud.io/BondageProjects/Bondage-College.git",
     "branch": "master",
-    "commit": "34006556b15ab760abf7c57696a6065b56ce0cce"
+    "commit": "856b3de9276b72305b61535ca9db306075207747"
   },
   "mapTree": "83fc30cfcb26d8c43365120da84a0520abd9b3ad",
-  "mapDataBlob": "739f9807a69e119c771984b62d73f4fb6c2d581d",
-  "syncedAt": "2026-10-25T21:48:51.628Z",
+  "mapDataBlob": "0fa6b32dc29d32d2deb99228ed2d51b1044c7296",
+  "syncedAt": "2026-10-30T22:59:35.334Z",
   "counts": {
     "tiles": 170,
     "objects": 372,
