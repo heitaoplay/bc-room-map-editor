@@ -4,7 +4,7 @@ name: Sync BC map data
 # the script exits early, nothing is committed and the site is NOT redeployed.
 on:
   schedule:
-    - cron: "17 19 * * *"   # 19:17 UTC = 03:17 Taiwan time
+    - cron: "30 19 */3 * *"   # 19:30 UTC = 03:30 (GMT+8)
   workflow_dispatch:
     inputs:
       force:
