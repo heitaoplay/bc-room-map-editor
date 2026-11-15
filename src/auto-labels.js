@@ -60,7 +60,7 @@ window.MAP_ZH_TYPES = {
   Banners: "旗帜", FloorObstacle: "障碍物", FloorDecoration: "地面装饰", FloorDecorationThemed: "主题装饰",
   FloorDecorationParty: "派对装饰", FloorDecorationCamping: "露营装饰", FloorDecorationExpanding: "组合家具",
   FloorDecorationAnimal: "动物", FloorFoamTiles: "泡沫地垫", FloorItem: "道具", FloorNumber: "数字标记",
-  FloorLetter: "字母标记", FloorIcon: "图标标记", Functional: "功能物件", LivingRoom: "客厅", Bedroom: "卧室",
+  FloorLetter: "字母标记", FloorIcon: "图标标记", Functional: "功能物件", EmptySpace: "空白格", LivingRoom: "客厅", Bedroom: "卧室",
   Bathroom: "浴室", School: "学校", ABDL: "ABDL", Kitchen: "厨房", Office: "办公室", Garden: "花园",
   Dungeon: "地牢", Medieval: "中世纪", Halloween: "万圣节", Christmas: "圣诞节", Holiday: "节日",
 };

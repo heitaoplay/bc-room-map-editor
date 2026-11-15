@@ -293,6 +293,28 @@
   }
   .pal-item:hover { border-color: var(--accent); transform: translateY(-2px) scale(1.02); }
   .pal-item.sel { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+  /* hover zoom for palette thumbnails */
+  #palPreview {
+    position: fixed; z-index: 9999; pointer-events: none; display: flex; flex-direction: column; gap: 8px;
+    padding: 10px; border-radius: 12px; background: var(--panel); border: 1px solid var(--line);
+    box-shadow: 0 10px 32px rgba(0,0,0,.5); opacity: 0; transform: translateX(-6px) scale(.97);
+    transition: opacity .14s ease, transform .16s var(--ease); max-width: 300px;
+  }
+  #palPreview.flip { transform: translateX(6px) scale(.97); }
+  #palPreview.show { opacity: 1; transform: none; }
+  #palPreview .pp-img {
+    border-radius: 8px; background-color: var(--panel2); background-position: center; background-repeat: no-repeat;
+    background-size: contain; margin: 0 auto;
+    background-image: none;
+  }
+  #palPreview .pp-meta { display: flex; justify-content: space-between; gap: 12px; font-size: 12px; color: var(--txt); }
+  #palPreview .pp-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #palPreview .pp-size { opacity: .7; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  #palPreview::before {
+    content: ""; position: absolute; top: var(--arrow-y, 50%); left: -6px; width: 10px; height: 10px; margin-top: -5px;
+    background: var(--panel); border-left: 1px solid var(--line); border-bottom: 1px solid var(--line); transform: rotate(45deg);
+  }
+  #palPreview.flip::before { left: auto; right: -6px; transform: rotate(225deg); }
   .pal-badge {
     position: absolute; top: 1px; right: 1px;
     font-size: 9px; font-weight: 700; line-height: 14px;
@@ -310,6 +332,16 @@
     border: 1px solid var(--line); background: var(--grid-bg);
     transition: box-shadow var(--dur) var(--ease), border-color var(--dur) var(--ease);
   }
+  #gridArea { width: 100%; min-width: 0; max-width: 100%; max-height: 100%; flex: 1; min-height: 0; display: flex; align-items: center; gap: 10px; margin: auto; }
+  #gridArea > div { min-width: 0; flex: 1 1 0; }
+  #originalWrap { display: none; overflow: auto; border: 1px solid var(--line); background: var(--grid-bg); }
+  #stage.compare #originalWrap { display: block; }
+  #gridWrap { width: max-content; }
+  #gridArea > div { max-height: 100%; overflow: auto; }
+  #stage.compare #gridWrap { width: 100%; }
+  #originalGrid { display: grid; grid-template-columns: repeat(var(--n), var(--cell, 13px)); grid-auto-rows: var(--cell, 13px); user-select: none; }
+  .compare-heading { display: none; color: var(--muted); font-size: 11px; margin: 0 0 4px; }
+  #stage.compare .compare-heading { display: block; }
   #grid {
     display: grid; grid-template-columns: repeat(var(--n), var(--cell, 13px)); grid-auto-rows: var(--cell, 13px);
     gap: 0; user-select: none;
@@ -317,16 +349,21 @@
   .cell { position: relative; width: 100%; height: 100%; background-size: cover; background-position: center; overflow: hidden; }
   .cell .obj { position: absolute; inset: 0; background-size: contain; background-position: center; background-repeat: no-repeat; pointer-events: none; }
   .cell:hover { outline: 1.5px solid var(--accent); outline-offset: -1.5px; z-index: 1; }
+  .cell.paired-hover { outline: 2px solid #fff; outline-offset: -2px; z-index: 2; }
+  .collision-view .cell::before { content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+  .collision-view .cell.walkable::before { background: rgba(48,190,105,.30); }
+  .collision-view .cell.blocked::before { background: rgba(230,70,60,.42); }
   #brushInfo { margin-top: 10px; color: var(--muted); font-size: 12px; }
   /* right panel */
-  #right { width: 320px; background: var(--panel); border-left: 1px solid var(--line); display: flex; flex-direction: column; padding: 10px; gap: 8px; }
+  #right { width: 320px; background: var(--panel); border-left: 1px solid var(--line); display: flex; flex-direction: column; padding: 10px; gap: 8px; overflow: auto; }
   #right h2 { font-size: 12px; margin: 0; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
-  #output {
+  #source, #output {
     width: 100%; height: 120px; resize: vertical; background: var(--grid-bg); color: var(--txt);
     border: 1px solid var(--line); border-radius: var(--radius); padding: 6px;
     font-family: ui-monospace, monospace; font-size: 11px;
     transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
   }
+  #source, #output { height: 100px; resize: vertical; }
   #stats { font-size: 11px; color: var(--muted); }
   .ok { color: var(--ok); } .err { color: var(--err); }
   .row { display: flex; gap: 6px; align-items: center; flex-wrap: nowrap; }
@@ -757,13 +794,8 @@
       <div class="sub" id="appSub">生成可直接 <code>/mappaste</code> 的数据串 · 40×40 网格</div>
     </div>
     <div class="toolbar">
-      <label class="chk"><span id="modeLabel">模式</span>
-        <select id="typeSel">
-          <option value="Always">始终可见</option>
-          <option value="Online">仅在线可见</option>
-          <option value="Offline">仅离线可见</option>
-        </select>
-      </label>
+        <button id="collisionToggle" aria-pressed="false">Collision</button>
+      <label class="chk"><span id="viewModeLabel">模式</span><select id="viewMode"><option value="normal">一般</option><option value="compare">比對</option></select></label>
       <label class="chk"><input type="checkbox" id="fog" /> <span id="fogLabel">迷雾</span></label>
       <div class="tb-group">
         <button id="btnUndo" title="撤销 (Ctrl+Z)">↶ 撤销</button>
@@ -824,7 +856,10 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 21 5-5"/><path d="M12.5 4.5a2.12 2.12 0 0 1 3 3L8 15l-5 5h6l9-9a2.12 2.12 0 0 0-3-3Z"/></svg><span class="t" id="toolEraser_t">橡皮擦</span>
         </button>
       </div>
-      <div id="gridWrap"><div id="grid"></div></div>
+      <div id="gridArea">
+        <div><div class="compare-heading" id="modifiedHeading">Modified</div><div id="gridWrap"><div id="grid"></div></div></div>
+        <div id="originalWrap"><div class="compare-heading" id="originalHeading">Original source</div><div id="originalGrid"></div></div>
+      </div>
       <div id="brushInfo">未选择部件</div>
       <div id="coords">—</div>
       <div class="hint" id="stageHint">左键绘制 · 右键擦除（当前层）· 拖动连续刷 · 快捷键 B笔刷 / R矩形 / L直线 / F填充 / E橡皮擦 · Ctrl+Z撤销 Ctrl+Y重做</div>
@@ -832,6 +867,8 @@
 
     <div id="right">
       <h2 id="panelTitle">mappaste 数据串</h2>
+      <textarea id="source" placeholder="Paste original mappaste code here"></textarea>
+      <h2 id="modifiedLabel">Modified</h2>
       <textarea id="output" placeholder="点「生成代码」自动填入，或直接粘贴已有的 mappaste 串"></textarea>
       <div class="row" style="margin-bottom:8px">
         <button id="btnExport" title="生成 mappaste 数据串到下方文本框">生成代码</button>
@@ -899,9 +936,10 @@
     var muted = false;
     try { muted = localStorage.getItem(MUTE_KEY) === "1"; } catch (e) {}
     function refreshMute() {
-      btnMute.textContent = muted ? "音效：关" : "音效：开";
+      btnMute.textContent = window.MAP_I18N.t(muted ? "sound.off" : "sound.on");
       btnMute.style.opacity = muted ? ".5" : "1";
     }
+    document.addEventListener("localechange", refreshMute);
     refreshMute();
 
     function ensureCtx() {
@@ -1090,7 +1128,7 @@
         // 语言选择项在 initLangSelect 后才填充，监听子树变化重新构建
         if (sel.id === "langSel") {
           var mo = new MutationObserver(syncOptions);
-          mo.observe(sel, { childList: true });
+          mo.observe(sel, { childList: true, subtree: true });
         }
       }
 
@@ -1099,7 +1137,7 @@
           function (w) { if (w !== except) w.classList.remove("open"); });
       }
 
-      ["typeSel", "langSel", "themeSel"].forEach(function (id) {
+      ["viewMode", "langSel", "themeSel"].forEach(function (id) {
         build(document.getElementById(id));
       });
 

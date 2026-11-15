@@ -99,6 +99,7 @@
   const FURNITURE_STYLES = new Set(["TableBrown", "ChairWood", "ThroneRed", "VikingChair", "Stairs", "AirConditioner", "Blank"]);
   const BEDDING_STYLES = new Set(["BedTeal", "PillowPink", "Bed"]);
   const LEAVES = [
+    { id: "other.blank", top: "other", labelKey: "cat.blank", match: (c) => c.type === "EmptySpace" },
     { id: "floor.floor", top: "floor", labelKey: "cat.floor", match: (c) => c.layer === "tile" && c.type === "Floor" && c.style !== "HalfWall" },
     { id: "floor.exterior", top: "floor", labelKey: "cat.exterior", match: (c) => c.layer === "tile" && c.type === "FloorExterior" },
     { id: "floor.water", top: "floor", labelKey: "cat.water", match: (c) => c.layer === "tile" && c.type === "Water" },
@@ -107,17 +108,18 @@
     { id: "wall.walldeco", top: "wall", labelKey: "cat.walldeco", match: (c) => c.type === "WallDecoration" },
     { id: "wall.banner", top: "wall", labelKey: "cat.banners", match: (c) => c.type === "Banners" },
     { id: "deco.obstacle", top: "deco", labelKey: "cat.obstacle", match: (c) => c.type === "FloorObstacle" },
-    { id: "deco.furniture", top: "deco", labelKey: "cat.furniture", match: (c) => (c.layer === "object" && c.style === "Blank") || c.type === "FloorDecorationThemed" || c.type === "FloorDecorationExpanding" || c.type === "FloorFoamTiles" || c.type === "ABDL" || c.type === "School" || c.type === "Bathroom" || ((c.type === "FloorDecoration" || c.type === "LivingRoom") && !BEDDING_STYLES.has(c.style)) },
+    { id: "deco.furniture", top: "deco", labelKey: "cat.furniture", match: (c) => (c.layer === "object" && c.style === "Blank") || c.type === "FloorDecorationThemed" || c.type === "FloorDecorationExpanding" || c.type === "FloorFoamTiles" || c.type === "ABDL" || c.type === "School" || c.type === "Bathroom" || c.type === "Kitchen" || c.type === "Office" || ((c.type === "FloorDecoration" || c.type === "LivingRoom") && !BEDDING_STYLES.has(c.style)) },
     { id: "deco.bedding", top: "deco", labelKey: "cat.bedding", match: (c) => c.type === "Bedroom" || ((c.type === "FloorDecoration" || c.type === "LivingRoom") && BEDDING_STYLES.has(c.style)) },
     { id: "deco.party", top: "deco", labelKey: "cat.party", match: (c) => c.type === "FloorDecorationParty" },
     { id: "deco.outdoor", top: "deco", labelKey: "cat.outdoorProps", match: (c) => c.type === "FloorDecorationCamping" },
     { id: "deco.animal", top: "deco", labelKey: "cat.animal", match: (c) => c.type === "FloorDecorationAnimal" },
-    { id: "item.gate", top: "item", labelKey: "cat.gate", match: (c) => (c.type === "FloorDecoration" || c.type === "Functional") && (c.style === "EntryFlag" || c.style === "ExitFlag") },
+    { id: "item.gate", top: "item", labelKey: "cat.gate", match: (c) => (c.type === "FloorDecoration" || c.type === "Functional") && (c.style === "EntryFlag" || c.style === "ExitFlag" || c.style === "TeleportPad") },
     { id: "item.key", top: "item", labelKey: "cat.key", match: (c) => (c.type === "FloorDecoration" || c.type === "Functional") && /^Key/.test(c.style || "") },
-    { id: "item.item", top: "item", labelKey: "cat.item", match: (c) => c.type === "FloorItem" || (c.type === "Functional" && /^(ConveyorBelt|Sign)/.test(c.style || "")) },
+    { id: "item.item", top: "item", labelKey: "cat.item", match: (c) => c.type === "FloorItem" || (c.type === "Functional" && /^(ConveyorBelt|Sign)/.test(c.style)) },
     { id: "marker.number", top: "marker", labelKey: "cat.number", match: (c) => c.type === "FloorNumber" },
     { id: "marker.letter", top: "marker", labelKey: "cat.letter", match: (c) => c.type === "FloorLetter" },
     { id: "marker.icon", top: "marker", labelKey: "cat.icon", match: (c) => c.type === "FloorIcon" },
+    { id: "other.unclassified", top: "other", labelKey: "cat.unclassified", match: () => true },
   ];
   const TOPS = [
     { id: "floor", labelKey: "cat2.floor", subs: ["floor.floor", "floor.exterior", "floor.water"] },
@@ -126,27 +128,17 @@
     { id: "item", labelKey: "cat2.item", subs: ["item.gate", "item.key", "item.item"] },
     { id: "marker", labelKey: "cat2.marker", subs: ["marker.number", "marker.letter", "marker.icon"] },
   ];
-  // A part whose `Type` matches none of the rules above (BC introduced a brand-new category) is NOT
-  // dropped or mis-filed: it gets its own sub-group under an automatic "Other (new)" top group,
-  // named after the type, and is fully paintable. Maintainers may add a rule above later (optional).
-  const DYN_LEAVES = {};
-  function leafDef(id) { return LEAVES.find((l) => l.id === id) || DYN_LEAVES[id]; }
-  function topDef(id) { return TOPS.find((t) => t.id === id); }
-  function leafLabel(leaf) { return leaf.dynType ? I18N.typeLabel(leaf.dynType) : T(leaf.labelKey); }
-  function classify(comp) {
-    for (const l of LEAVES) if (l.match(comp)) return l.id;
-    const id = "other:" + comp.layer + ":" + comp.type;
-    if (!DYN_LEAVES[id]) DYN_LEAVES[id] = { id, top: "other", dynType: comp.type, match: (c) => c.layer === comp.layer && c.type === comp.type };
-    return id;
-  }
+  function leafDef(id) { return LEAVES.find((leaf) => leaf.id === id); }
+  function topDef(id) { return TOPS.find((top) => top.id === id); }
+  function leafLabel(leaf) { return T(leaf.labelKey); }
+  function classify(comp) { return LEAVES.find((leaf) => leaf.match(comp)).id; }
   const LEAF_ITEMS = {};
   [].concat(CAT.tiles, CAT.objects).forEach((c) => {
+    if (c.deprecatedId !== undefined) return; // old IDs kept only for decoding old maps; not offered in the palette
     const id = classify(c);
     (LEAF_ITEMS[id] = LEAF_ITEMS[id] || []).push(c);
   });
-  if (Object.keys(DYN_LEAVES).length) {
-    TOPS.push({ id: "other", labelKey: "cat2.other", subs: Object.keys(DYN_LEAVES).sort() });
-  }
+  TOPS.push({ id: "other", labelKey: "cat.other", subs: ["other.blank", "other.unclassified"].filter((id) => LEAF_ITEMS[id]) });
 
   // ---------- state ----------
   const state = {
@@ -158,6 +150,10 @@
     tilesGrid: MapLib.createGrid(OAK),
     objGrid: MapLib.createGrid(BLANK),
     fog: false,
+    collisionView: false,
+    viewMode: "normal",
+    originalMap: null,
+    autoFit: true,
     type: "Always",
     mouseDown: false,
     dragStart: null,        // {x,y} for rect/line preview
@@ -168,7 +164,7 @@
     history: [],
     histIdx: -1,
   };
-  let cellEls = []; // cellEls[y][x] -> DOM element
+  let cellEls = [], originalCellEls = []; // cellEls[y][x] -> DOM element
   let lastStats = null; // last updateStats args, re-rendered on locale change
 
   // ---------- history (undo/redo) ----------
@@ -215,7 +211,7 @@
   // ---------- palette ----------
   function componentsForCategory(catId) {
     if (!catId) return [];
-    if (catId.indexOf(".") === -1) {
+    if (topDef(catId)) {
       const top = topDef(catId);
       return top ? [].concat.apply([], top.subs.map((s) => LEAF_ITEMS[s] || [])) : [];
     }
@@ -233,16 +229,81 @@
     );
   }
 
+  // ---------- hover zoom: enlarged thumbnail next to the palette ----------
+  let palPrev = null, palPrevTimer = 0, palPrevSeq = 0;
+  function ensurePalPreview() {
+    if (palPrev) return palPrev;
+    palPrev = document.createElement("div");
+    palPrev.id = "palPreview";
+    palPrev.innerHTML = '<div class="pp-img"></div><div class="pp-meta"><span class="pp-name"></span><span class="pp-size"></span></div>';
+    document.body.appendChild(palPrev);
+    return palPrev;
+  }
+  function hidePalPreview() {
+    clearTimeout(palPrevTimer); palPrevSeq++;
+    if (palPrev) palPrev.classList.remove("show");
+  }
+  function showPalPreview(itemEl, comp) {
+    if (window.matchMedia && window.matchMedia("(hover: none)").matches) return; // touch: no hover
+    clearTimeout(palPrevTimer);
+    const seq = ++palPrevSeq;
+    palPrevTimer = setTimeout(() => {
+      const box = ensurePalPreview();
+      const url = imgFor(comp);
+      const imgBox = box.querySelector(".pp-img");
+      box.querySelector(".pp-name").textContent = zh(comp);
+      const sizeEl = box.querySelector(".pp-size");
+      sizeEl.textContent = "";
+      imgBox.style.backgroundImage = url ? 'url("' + url + '")' : "none";
+      imgBox.style.backgroundColor = url ? "" : colorFor(comp);
+      const place = (w, h) => {
+        if (seq !== palPrevSeq) return; // mouse already left / moved on
+        // scale up small thumbnails (up to 4x), keep big ones within the box; never blur-shrink below natural size
+        const MAXW = 260, MAXH = 300;
+        let k = Math.min(MAXW / w, MAXH / h, 4);
+        if (k < 1 && Math.max(w, h) <= Math.max(MAXW, MAXH)) k = 1;
+        const dw = Math.max(48, Math.round(w * k)), dh = Math.max(48, Math.round(h * k));
+        imgBox.style.width = dw + "px"; imgBox.style.height = dh + "px";
+        if (url) sizeEl.textContent = w + "×" + h;
+        box.classList.add("show");
+        const r = itemEl.getBoundingClientRect();
+        const panel = document.getElementById("palette");
+        const pr = (panel ? panel.getBoundingClientRect() : r);
+        const bw = box.offsetWidth, bh = box.offsetHeight, gap = 14, vw = window.innerWidth, vh = window.innerHeight;
+        let left = pr.right + gap;
+        if (left + bw > vw - 8) left = Math.max(8, r.left - gap - bw); // not enough room on the right -> flip left
+        let top = r.top + r.height / 2 - bh / 2;
+        top = Math.max(8, Math.min(vh - bh - 8, top));
+        box.style.left = left + "px"; box.style.top = top + "px";
+        // arrow follows the hovered row
+        box.style.setProperty("--arrow-y", Math.max(14, Math.min(bh - 14, r.top + r.height / 2 - top)) + "px");
+        box.classList.toggle("flip", left < r.left);
+      };
+      if (!url) { place(48, 48); return; }
+      const im = new Image();
+      im.onload = () => place(im.naturalWidth || 48, im.naturalHeight || 48);
+      im.onerror = () => place(48, 48);
+      im.src = url;
+    }, 90);
+  }
+  (function bindPalPreviewDismiss() {
+    const pal = document.getElementById("palette");
+    if (pal) pal.addEventListener("scroll", hidePalPreview, { passive: true });
+    window.addEventListener("blur", hidePalPreview);
+    window.addEventListener("resize", hidePalPreview);
+  })();
+
   function renderPalette() {
+    hidePalPreview();
     const root = document.getElementById("palette");
     root.innerHTML = "";
     let sections; // [{ label, items }]
     if (state.search) {
-      const all = [].concat(CAT.tiles, CAT.objects).filter(matchSearch);
+      const all = [].concat(CAT.tiles, CAT.objects).filter((c) => c.deprecatedId === undefined).filter(matchSearch);
       const byLeaf = {};
       all.forEach((c) => { const lid = classify(c); (byLeaf[lid] = byLeaf[lid] || []).push(c); });
       sections = Object.keys(byLeaf).map((lid) => ({ label: leafLabel(leafDef(lid)), items: byLeaf[lid] }));
-    } else if (state.category.indexOf(".") === -1) {
+    } else if (topDef(state.category)) {
       const top = topDef(state.category);
       sections = (top ? top.subs : []).map((sid) => ({ label: leafLabel(leafDef(sid)), items: LEAF_ITEMS[sid] || [] })).filter((s) => s.items.length);
     } else {
@@ -270,6 +331,8 @@
         const compLayer = comp.layer === "tile" ? "tiles" : "objects";
         if (state.brush && state.brush.id === comp.id && state.brush.layer === compLayer) el.classList.add("sel");
         el.addEventListener("click", () => selectBrush(comp));
+        el.addEventListener("mouseenter", () => showPalPreview(el, comp));
+        el.addEventListener("mouseleave", hidePalPreview);
         grid.appendChild(el);
       });
       secEl.appendChild(grid); root.appendChild(secEl);
@@ -321,7 +384,7 @@
   function updateCurCatLabel() {
     const el = document.getElementById("curCatLabel");
     if (!el) return;
-    if (state.category.indexOf(".") === -1) {
+    if (topDef(state.category)) {
       const top = topDef(state.category);
       el.textContent = top ? T(top.labelKey) : "";
     } else {
@@ -372,12 +435,37 @@
     renderGrid();
   }
 
+  function hasCollision(tileId, objectId) {
+    return !!(compOf(tileId, "tiles").canEnter || compOf(objectId, "objects").canEnter);
+  }
+
+  function renderOriginalGrid(map) {
+    const root = document.getElementById("originalGrid");
+    root.style.setProperty("--n", W);
+    originalCellEls = Array.from({ length: H }, () => new Array(W));
+    root.innerHTML = "";
+    if (!map) return;
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const cell = document.createElement("div"), oid = map.objGrid[y][x];
+      cell.className = "cell"; cell.dataset.x = x; cell.dataset.y = y;
+      paintBg(cell, compOf(map.tilesGrid[y][x], "tiles"), true);
+      if (oid !== BLANK) { const layer = document.createElement("div"); layer.className = "obj"; paintBg(layer, compOf(oid, "objects"), false); cell.appendChild(layer); }
+      cell.classList.toggle("blocked", hasCollision(map.tilesGrid[y][x], oid));
+      cell.classList.toggle("walkable", !cell.classList.contains("blocked"));
+      cell.addEventListener("mouseenter", () => { state.hover = { x, y }; updateHoverPair(x, y); });
+      root.appendChild(cell); originalCellEls[y][x] = cell;
+    }
+  }
+
   function updateCellDOM(x, y) {
     const cell = cellEls[y][x];
     const tid = state.tilesGrid[y][x], oid = state.objGrid[y][x];
     paintBg(cell, compOf(tid, "tiles"), true);
     if (oid !== BLANK) paintBg(cell.firstChild, compOf(oid, "objects"), false);
     else { cell.firstChild.style.backgroundImage = "none"; cell.firstChild.style.backgroundColor = "transparent"; }
+    cell.classList.toggle("blocked", hasCollision(tid, oid));
+    cell.classList.toggle("walkable", !cell.classList.contains("blocked"));
+    cell.classList.toggle("paired-hover", !!state.hover && state.hover.x === x && state.hover.y === y);
   }
 
   function renderGrid() {
@@ -463,6 +551,7 @@
   }
   function onCellEnter(x, y) {
     state.hover = { x, y };
+    updateHoverPair(x, y);
     const coords = document.getElementById("coords");
     if (coords) {
       const t = compOf(state.tilesGrid[y][x], "tiles"), o = compOf(state.objGrid[y][x], "objects");
@@ -472,6 +561,11 @@
     if (state.eraseStroke) { eraseCell(x, y); return; }
     if (state.tool === "brush") { if (state.eraser) eraseCell(x, y); else paintCell(x, y); return; }
     if (state.tool === "rect" || state.tool === "line") applyShape(x, y);
+  }
+  function updateHoverPair(x, y) {
+    document.querySelectorAll(".paired-hover").forEach((el) => el.classList.remove("paired-hover"));
+    if (state.viewMode !== "compare") return;
+    [cellEls[y] && cellEls[y][x], originalCellEls[y] && originalCellEls[y][x]].forEach((el) => { if (el) el.classList.add("paired-hover"); });
   }
   function applyShape(x, y) {
     if (!state.dragBase || !state.dragStart) return;
@@ -514,12 +608,14 @@
       pushHistory();
       state.tilesGrid = MapLib.charsToGrid(data.Tiles);
       state.objGrid = MapLib.charsToGrid(data.Objects);
+      state.originalMap = { tilesGrid: state.tilesGrid.map((row) => row.slice()), objGrid: state.objGrid.map((row) => row.slice()) };
+      renderOriginalGrid(state.originalMap);
       state.cellData = data.CellData || null;   // R133 sign texts
       state.effects = data._effects || "";      // R133 lighting ("@...") — kept as-is on export
       const unk = MapLib.unknownIds(data.Tiles, "tile").length + MapLib.unknownIds(data.Objects, "object").length;
       if (unk) console.warn("[editor] " + unk + " unknown component id(s): catalog is older than the map's game version");
       if (typeof data.Fog === "boolean") { state.fog = data.Fog; document.getElementById("fog").checked = data.Fog; }
-      if (data.Type) { state.type = data.Type; document.getElementById("typeSel").value = data.Type; }
+      state.type = data.Type || "Always";
       renderGrid(); updateStats(true, str.length, T("flash.loaded"));
       return true;
     } catch (err) { updateStats(false, str.length, T("flash.loadFail") + err.message); return false; }
@@ -542,7 +638,7 @@
     const reader = new FileReader();
     reader.onload = (e) => {
       const text = (e.target.result || "").trim();
-      document.getElementById("output").value = text;
+      document.getElementById("source").value = text;
       loadFromString(text);
     };
     reader.readAsText(file);
@@ -639,17 +735,24 @@
   })();
 
   // ---------- zoom ----------
-  function setZoom(px) {
-    state.zoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, px));
+  function setZoom(px, fit) {
+    if (!fit) state.autoFit = false;
+    state.zoom = fit ? px : Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, px));
     var grid = document.getElementById("grid");
     grid.style.transition = "none"; // instant during drag
     grid.style.setProperty("--cell", state.zoom + "px");
+    document.getElementById("originalGrid").style.setProperty("--cell", state.zoom + "px");
     document.getElementById("zoomLevel").textContent = Math.round(state.zoom / CELL_BASE * 100) + "%";
   }
   function zoomFit() {
-    const wrap = document.getElementById("gridWrap");
-    const fitPx = Math.floor(Math.min((wrap.clientWidth - 20) / W, (wrap.clientHeight - 20) / H));
-    setZoom(Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, fitPx)));
+    const area = document.getElementById("gridArea");
+    const cols = state.viewMode === "compare" ? 2 : 1;
+    const heading = document.getElementById("modifiedHeading");
+    const headerHeight = heading.offsetHeight ? heading.offsetHeight + 4 : 0;
+    const fitPx = Math.min(((area.clientWidth - (cols - 1) * 10) / cols - 2) / W, (area.clientHeight - headerHeight - 2) / H);
+    if (fitPx <= 0) return;
+    state.autoFit = true;
+    setZoom(Math.floor(fitPx * 64) / 64, true);
   }
 
   // ---------- tools / layer UI ----------
@@ -713,13 +816,21 @@
     document.title = T("app.title");
     setText("appTitle", T("app.title"));
     setText("appSub", T("app.subtitle"));
-    setText("modeLabel", T("mode.label"));
-    const ts = document.getElementById("typeSel");
-    if (ts) {
-      const map = { Always: "mode.always", Online: "mode.online", Offline: "mode.offline" };
-      Object.keys(map).forEach((v) => { const o = ts.querySelector('option[value="' + v + '"]'); if (o) o.textContent = T(map[v]); });
-    }
+    setText("viewModeLabel", T("mode.label"));
+    ["viewMode"].forEach((id) => {
+      const el = document.getElementById(id); if (!el) return;
+      el.querySelector('option[value="normal"]').textContent = T("viewMode.normal");
+      el.querySelector('option[value="compare"]').textContent = T("viewMode.compare");
+    });
     setText("fogLabel", T("fog"));
+    setText("collisionToggle", T("collision")); setAttr("collisionToggle", "title", T("collision.title"));
+    setText("themeLabel", T("theme.label"));
+    for (const option of document.getElementById("themeSel").options) option.textContent = T("theme." + option.value);
+    setAttr("btnMute", "title", T("sound.toggle"));
+    setAttr("zoomIn", "title", T("zoom.in"));
+    setAttr("zoomOut", "title", T("zoom.out"));
+    setAttr("catMenuBtn", "title", T("categories"));
+    setAttr("btnApplyGame", "title", T("applyGame"));
     // toolbar buttons
     setText("btnUndo", T("undo")); setAttr("btnUndo", "title", T("undo") + " (Ctrl+Z)");
     setText("btnRedo", T("redo")); setAttr("btnRedo", "title", T("redo") + " (Ctrl+Y)");
@@ -742,11 +853,13 @@
     // zoom fit
     setText("zoomFit", T("zoom.fit")); setAttr("zoomFit", "title", T("zoom.fit.title"));
     // right panel
-    setText("panelTitle", T("panel.title"));
+    setText("panelTitle", T("source.label")); setText("modifiedLabel", T("modified.label"));
+    setText("originalHeading", T("source.label")); setText("modifiedHeading", T("modified.label"));
+    const source = document.getElementById("source"); if (source) source.placeholder = T("source.ph");
     const out = document.getElementById("output"); if (out) out.placeholder = T("output.ph");
     setText("btnCopy", T("copy"));
     setText("btnApplyGame", T("applyGame"));
-    const hint = document.getElementById("hintImport"); if (hint) hint.innerHTML = T("hint.import");
+    const hint = document.getElementById("hintImport"); if (hint) hint.textContent = T("hint.import");
     setText("stageHint", T("stage.hint"));
     // language label + select value
     setText("langLabel", T("lang.label"));
@@ -773,7 +886,6 @@
       closeCatMenu();
     });
     document.getElementById("fog").addEventListener("change", (e) => { state.fog = e.target.checked; });
-    document.getElementById("typeSel").addEventListener("change", (e) => { state.type = e.target.value; });
     document.getElementById("btnClear").addEventListener("click", clearMap);
     document.getElementById("btnFill").addEventListener("click", fillFloor);
     document.getElementById("btnExport").addEventListener("click", exportStr);
@@ -788,9 +900,20 @@
     document.getElementById("fileImport").addEventListener("change", (e) => {
       if (e.target.files && e.target.files[0]) importFile(e.target.files[0]);
     });
-    // paste auto-detect in textarea
-    document.getElementById("output").addEventListener("paste", () => {
-      setTimeout(() => loadFromString(document.getElementById("output").value.trim()), 50);
+    document.getElementById("source").addEventListener("paste", () => {
+      setTimeout(() => loadFromString(document.getElementById("source").value.trim()), 50);
+    });
+    document.getElementById("viewMode").addEventListener("change", (e) => {
+      state.viewMode = e.target.value;
+      document.getElementById("stage").classList.toggle("compare", state.viewMode === "compare");
+      renderOriginalGrid(state.originalMap || { tilesGrid: state.tilesGrid, objGrid: state.objGrid });
+      updateHoverPair(state.hover ? state.hover.x : -1, state.hover ? state.hover.y : -1);
+      zoomFit();
+    });
+    document.getElementById("collisionToggle").addEventListener("click", (e) => {
+      state.collisionView = !state.collisionView;
+      document.getElementById("stage").classList.toggle("collision-view", state.collisionView);
+      e.currentTarget.setAttribute("aria-pressed", state.collisionView);
     });
     document.getElementById("btnUndo").addEventListener("click", undo);
     document.getElementById("btnRedo").addEventListener("click", redo);
@@ -809,13 +932,13 @@
     if (search) search.addEventListener("input", (e) => { state.search = e.target.value.trim(); renderPalette(); });
 
     document.addEventListener("keydown", onKey);
-    window.addEventListener("resize", () => { if (state.zoom === CELL_BASE) zoomFit(); });
+    window.addEventListener("resize", () => { if (state.autoFit) zoomFit(); });
 
     // seed history with initial (empty) state
     state.history = [snapshot()]; state.histIdx = 0; updateUndoButtons();
 
     setTool("brush");
-    setZoom(CELL_BASE);
+    zoomFit();
     selectBrush(CAT.tiles.find((t) => t.type === "Floor") || CAT.tiles[0]);
   }
 
