@@ -936,9 +936,10 @@
     var muted = false;
     try { muted = localStorage.getItem(MUTE_KEY) === "1"; } catch (e) {}
     function refreshMute() {
-      btnMute.textContent = muted ? "音效：关" : "音效：开";
+      btnMute.textContent = window.MAP_I18N.t(muted ? "sound.off" : "sound.on");
       btnMute.style.opacity = muted ? ".5" : "1";
     }
+    document.addEventListener("localechange", refreshMute);
     refreshMute();
 
     function ensureCtx() {
@@ -1127,7 +1128,7 @@
         // 语言选择项在 initLangSelect 后才填充，监听子树变化重新构建
         if (sel.id === "langSel") {
           var mo = new MutationObserver(syncOptions);
-          mo.observe(sel, { childList: true });
+          mo.observe(sel, { childList: true, subtree: true });
         }
       }
 

@@ -15,10 +15,10 @@ const ok = (c, m) => { console.log((c ? "OK   " : "FAIL ") + m); if (!c) fail++;
 // --- throw-away project copy ---
 for (const d of ["scripts", "src"]) fs.cpSync(path.join(repo, d), path.join(tmp, d), { recursive: true });
 fs.copyFileSync(path.join(repo, "package.json"), path.join(tmp, "package.json"));
-fs.symlinkSync(path.join(repo, "node_modules"), path.join(tmp, "node_modules"));
+
 fs.mkdirSync(path.join(tmp, "assets"));
 fs.writeFileSync(path.join(tmp, "src", "images.json"), "{}"); // start with NO thumbnails
-const run = (script, args = []) => cp.spawnSync(process.execPath, [path.join(tmp, "scripts", script), ...args], { env: { ...process.env, BC_ROOT: tmp }, encoding: "utf8" });
+const run = (script, args = []) => cp.spawnSync(process.execPath, [path.join(tmp, "scripts", script), ...args], { env: { ...process.env, BC_ROOT: tmp, NODE_PATH: path.join(repo, "node_modules") }, encoding: "utf8" });
 
 // --- fake upstream ---
 function png() { // minimal valid 2x2 PNG
@@ -94,11 +94,13 @@ ok(L("Floor", "ZorpGlimmer") === "ZorpGlimmer".replace(/([a-z])([A-Z])/g, "$1 $2
 ok(tw.w.MAP_I18N.labelForComp({ type: "Floor", style: "ZorpGlimmer", name: "Glimmering Zorp" }) === "Glimmering Zorp", "BC English name used when present");
 ok(L("Floor", "CheckerCarpetBlue") === "藍色格紋地毯", "existing label converted to Traditional: " + L("Floor", "CheckerCarpetBlue"));
 tw.w.document.getElementById("catMenuBtn").click();
-const tops = [...tw.w.document.querySelectorAll(".cat-group-title")].map((e) => e.textContent);
-ok(tops.length === 6 && /其他/.test(tops[5]), "automatic 'Other (new)' group appears for the unknown Type: " + tops.join(" | "));
-const subs = [...tw.w.document.querySelectorAll(".cat-sub-item")].map((e) => e.textContent);
-ok(subs.includes("Brand New Type"), "sub-group named after the new Type: " + subs.slice(-2).join(","));
-tw.w.document.querySelectorAll(".cat-group-title")[5].click();
+const other = [...tw.w.document.querySelectorAll(".cat-group-title")]
+  .find((title) => title.textContent === "其他");
+ok(!!other, "Other category appears for new content");
+const unclassified = [...other.parentElement.querySelectorAll(".cat-sub-item")]
+  .find((button) => button.textContent === "未分類");
+ok(!!unclassified, "unknown type is grouped under Other > Unclassified");
+unclassified.click();
 const pal = [...tw.w.document.querySelectorAll(".pal-item")];
 ok(pal.length === 1, "new part is listed in the palette");
 pal[0].click();

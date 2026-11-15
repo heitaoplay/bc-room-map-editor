@@ -824,6 +824,13 @@
     });
     setText("fogLabel", T("fog"));
     setText("collisionToggle", T("collision")); setAttr("collisionToggle", "title", T("collision.title"));
+    setText("themeLabel", T("theme.label"));
+    for (const option of document.getElementById("themeSel").options) option.textContent = T("theme." + option.value);
+    setAttr("btnMute", "title", T("sound.toggle"));
+    setAttr("zoomIn", "title", T("zoom.in"));
+    setAttr("zoomOut", "title", T("zoom.out"));
+    setAttr("catMenuBtn", "title", T("categories"));
+    setAttr("btnApplyGame", "title", T("applyGame"));
     // toolbar buttons
     setText("btnUndo", T("undo")); setAttr("btnUndo", "title", T("undo") + " (Ctrl+Z)");
     setText("btnRedo", T("redo")); setAttr("btnRedo", "title", T("redo") + " (Ctrl+Y)");
@@ -852,7 +859,7 @@
     const out = document.getElementById("output"); if (out) out.placeholder = T("output.ph");
     setText("btnCopy", T("copy"));
     setText("btnApplyGame", T("applyGame"));
-    const hint = document.getElementById("hintImport"); if (hint) hint.innerHTML = T("hint.import");
+    const hint = document.getElementById("hintImport"); if (hint) hint.textContent = T("hint.import");
     setText("stageHint", T("stage.hint"));
     // language label + select value
     setText("langLabel", T("lang.label"));
