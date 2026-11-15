@@ -32,6 +32,7 @@ function compact(list, layer) {
 		if (e.BlockVision) o.blockVision = true;
 		if (e.BlockHearing) o.blockHearing = true;
 		if (e.Exit) o.exit = true;
+		if (e.DeprecatedID !== undefined) o.deprecatedId = e.DeprecatedID; // old ID kept only so old maps still decode; hidden from the palette
 		if (e.Unique) o.unique = true;
 		if (e.OccupiedStyle) o.occupiedStyle = e.OccupiedStyle;
 		if (e.AssetName) o.asset = `${e.AssetGroup}:${e.AssetName}`;
