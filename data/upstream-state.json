@@ -2,18 +2,20 @@
   "upstream": {
     "repo": "https://gitgud.io/BondageProjects/Bondage-College.git",
     "branch": "master",
-    "commit": "abcfce6c9ec32dedc1954f05c4404ac3ecfdf3fe"
+    "commit": "87b50955e94ae8b128477295a512bb0a554c160c"
   },
-  "mapTree": "9736babaef0daabac991334dfc89b60e9a0261c1",
-  "mapDataBlob": "830024516a6b6f0d05a0cb8379f0d8981b681768",
-  "syncedAt": "2026-11-12T01:32:50.299Z",
+  "mapTree": "29bf99dfc5dac2a4d94b1fbffc0aef8165ef27c1",
+  "mapDataBlob": "4eceb32b83a805e3fc7dab7a7a31ef6ae0bf1457",
+  "syncedAt": "2026-11-23T00:25:43.059Z",
   "counts": {
     "tiles": 170,
     "objects": 373,
     "effects": 8,
-    "missingImages": 0
+    "missingImages": 1
   },
-  "missingImages": [],
+  "missingImages": [
+    "Wall:SteelGray"
+  ],
   "unreferencedUpstreamImages": [
     "Tiles/Floor/CarpetWhite.png",
     "Tiles/Fog/Full.png",
@@ -23,6 +25,7 @@
     "Tiles/Type/FloorExterior.png",
     "Tiles/Type/Wall.png",
     "Tiles/Type/Water.png",
+    "Tiles/Wall/SteelGary.png",
     "Tiles/WallEffect/0.png",
     "Tiles/WallEffect/1.png",
     "Tiles/WallEffect/10.png",
@@ -223,6 +226,8 @@
     "Objects/FloorDecorationExpanding/CouchPinkRight_Fabric.png",
     "Objects/FloorDecorationExpanding/CouchPinkRight_Legs.png",
     "Objects/FloorDecorationExpanding/CouckPinkSmall.png",
+    "Objects/FloorDecorationExpanding/CouckPinkSmall_Fabric.png",
+    "Objects/FloorDecorationExpanding/CouckPinkSmall_Legs.png",
     "Objects/FloorDecorationExpanding/Railroad.png",
     "Objects/FloorDecorationExpanding/RailroadEast.png",
     "Objects/FloorDecorationExpanding/RailroadEastWest.png",
